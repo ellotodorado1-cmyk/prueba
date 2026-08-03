@@ -334,11 +334,16 @@
     });
   }
 
-  function reiniciarApp() {
+ function reiniciarApp() {
     document.getElementById('form-datos').reset();
     reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
     document.getElementById('contenedor-horas').innerHTML = '';
-    document.getElementById('btn-reservar').disabled = true;
+    
+    // RESTAURAR TEXTO Y ESTADO DEL BOTÓN
+    const btn = document.getElementById('btn-reservar');
+    btn.innerText = 'Confirmar Reserva';
+    btn.disabled = true;
+    
     volver('step-datos');
   }
 
