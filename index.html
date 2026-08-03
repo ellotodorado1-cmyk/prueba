@@ -159,6 +159,9 @@
 </div>
 
 <script>
+  // REEMPLAZA ESTA URL CON TU URL REAL DE DESPLIEGUE DE APPS SCRIPT
+  const API_URL = 'https://script.google.com/macros/s/AKfycbyaQ1ThjmnJZ1uVzqsXkYzH6eZWJ5mCc6HI8J0s1TsQc2hvq2iCGRf4xo7bwLDZYeRKEw/exec';
+
   let reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
 
   const optionsSF = { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric' };
@@ -262,7 +265,19 @@
     document.getElementById('loader-horas').style.display = 'block';
     document.getElementById('msg-no-horas').style.display = 'none';
     document.getElementById('btn-reservar').disabled = true;
-    google.script.run.withSuccessHandler(mostrarHoras).obtenerHorasDisponibles(anio, mes, dia, reservaActual.duracion);
+
+    const url = `${API_URL}?anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(res => {
+        if (res.exito) {
+          mostrarHoras(res.datos);
+        } else {
+          alert("Error: " + res.error);
+        }
+      })
+      .catch(err => alert("Error de comunicación: " + err.message));
   }
 
   function mostrarHoras(horas) {
@@ -287,7 +302,16 @@
   function realizarReserva() {
     document.getElementById('btn-reservar').disabled = true;
     document.getElementById('btn-reservar').innerText = 'Procesando...';
-    google.script.run.withSuccessHandler(res => {
+
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        accion: 'RESERVAR',
+        datos: reservaActual
+      })
+    })
+    .then(res => res.json())
+    .then(res => {
       if(res.exito) {
         document.getElementById('resumen-reserva').innerHTML = `
           <strong>Reserva #:</strong> ${res.numeroReserva} <br>
@@ -302,7 +326,12 @@
         document.getElementById('btn-reservar').disabled = false;
         document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
       }
-    }).procesarReserva(reservaActual);
+    })
+    .catch(err => {
+      alert("Error de red: " + err.message);
+      document.getElementById('btn-reservar').disabled = false;
+      document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
+    });
   }
 
   function reiniciarApp() {
@@ -322,11 +351,24 @@
     if(!num) { mostrarMensajeCancelar("Ingrese un número de reserva.", "error"); return; }
     if(confirm("¿Seguro que desea cancelar?")) {
       document.getElementById('loader-cancelar').style.display = 'block';
-      google.script.run.withSuccessHandler(res => {
+
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          accion: 'CANCELAR',
+          numeroReserva: num
+        })
+      })
+      .then(res => res.json())
+      .then(res => {
         document.getElementById('loader-cancelar').style.display = 'none';
         mostrarMensajeCancelar(res.exito ? res.mensaje : res.error, res.exito ? 'success' : 'error');
         if (res.exito) document.getElementById('num-reserva-input').value = '';
-      }).gestionarReserva('CANCELAR', num);
+      })
+      .catch(err => {
+        document.getElementById('loader-cancelar').style.display = 'none';
+        mostrarMensajeCancelar("Error de conexión: " + err.message, "error");
+      });
     }
   }
 </script>
