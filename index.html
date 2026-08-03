@@ -159,7 +159,7 @@
 </div>
 
 <script>
-  // REEMPLAZA ESTA URL CON TU CLOUDFLARE WORKER DEPLOYADO
+  // WORKER DE CLOUDFLARE
   const WORKER_URL = "https://green-math-1d45.ellotodorado1.workers.dev/";
 
   let reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
@@ -260,20 +260,48 @@
     cargarHoras(anio, mes, dia);
   }
 
+  // FUNCIÓN MEJORADA: Reintentos automáticos para evitar fallos de Cold Start
   async function cargarHoras(anio, mes, dia) {
     document.getElementById('contenedor-horas').innerHTML = '';
     document.getElementById('loader-horas').style.display = 'block';
     document.getElementById('msg-no-horas').style.display = 'none';
     document.getElementById('btn-reservar').disabled = true;
 
-    try {
-      const url = `${WORKER_URL}?action=obtenerHoras&anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
-      const response = await fetch(url);
-      const horas = await response.json();
-      mostrarHoras(horas);
-    } catch (err) {
-      alert("Error al cargar horarios. Intente nuevamente.");
-      document.getElementById('loader-horas').style.display = 'none';
+    const url = `${WORKER_URL}?action=obtenerHoras&anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
+    const MAX_INTENTOS = 3;
+
+    for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
+      try {
+        console.log(`Cargando horarios (Intento ${intento}/${MAX_INTENTOS})...`);
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Status ${response.status}`);
+        }
+
+        const horas = await response.json();
+
+        if (horas.error) {
+          throw new Error(horas.error);
+        }
+
+        // Si tuvo éxito, mostramos las horas y cortamos la función
+        mostrarHoras(horas);
+        return;
+
+      } catch (err) {
+        console.warn(`Intento ${intento} falló: ${err.message}`);
+
+        // Si es el último intento y falló, mostramos el error al usuario
+        if (intento === MAX_INTENTOS) {
+          document.getElementById('loader-horas').style.display = 'none';
+          alert("Error al cargar horarios. Por favor, intente seleccionar el día nuevamente.");
+          return;
+        }
+
+        // Esperamos 1.5 segundos antes de reintentar para dar tiempo al script de despertar
+        await new Promise(res => setTimeout(res, 1500));
+      }
     }
   }
 
