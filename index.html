@@ -159,13 +159,12 @@
 </div>
 
 <script>
-  // 🔴 REEMPLAZA ESTA URL CON TU WEB APP URL DE GOOGLE APPS SCRIPT
+  // 🔴 REEMPLAZA ESTA URL CON LA TUA IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYgniqgjhNiBcxsHQZRN-UwYVo4zr2OhAXfUj-KCF-1HjGkTUl1u7txLxDIvT_pUAo/exec';
 
   let reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
   let cacheHoras = {};
 
-  // Límite de 2 semanas basado en hora de San Francisco
   const optionsSF = { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric' };
   const formatterSF = new Intl.DateTimeFormat('en-US', optionsSF);
   const partsSF = formatterSF.formatToParts(new Date());
@@ -176,7 +175,7 @@
 
   let hoySF = new Date(sfYear, sfMonth, sfDay);
   hoySF.setHours(0,0,0,0);
-  let maxDateSF = new Date(hoySF.getTime() + 14 * 24 * 60 * 60 * 1000); // Límite de 2 semanas
+  let maxDateSF = new Date(hoySF.getTime() + 14 * 24 * 60 * 60 * 1000); // Exactamente 2 semanas
   
   let currentMonth = hoySF.getMonth();
   let currentYear = hoySF.getFullYear();
@@ -215,7 +214,7 @@
     cacheHoras = {};
     renderCalendar();
     volver('step-calendario');
-    precargarHorasDisponibles(); // Precarga rápida en segundo plano de las 2 semanas
+    precargarHorasDisponibles();
   });
 
   function cambiarMes(dir) {
@@ -239,7 +238,7 @@
       let fechaBucle = new Date(currentYear, currentMonth, dia);
       let esFinDeSemana = (fechaBucle.getDay() === 0 || fechaBucle.getDay() === 6);
       let esPasado = fechaBucle < hoySF;
-      let esMuyLejos = fechaBucle > maxDateSF; // Control del límite de 2 semanas
+      let esMuyLejos = fechaBucle > maxDateSF;
       
       let div = document.createElement('div');
       div.className = 'cal-day';
@@ -257,7 +256,6 @@
     }
   }
 
-  // Precarga todas las horas de los 14 días para que la respuesta sea instantánea
   async function precargarHorasDisponibles() {
     try {
       const url = `${SCRIPT_URL}?action=obtenerHorasPeriodo&duracion=${reservaActual.duracion}`;
@@ -265,13 +263,12 @@
       const data = await response.json();
       if (data.exito) {
         cacheHoras = data.disponibilidad;
-        // Si el usuario ya había tocado un día mientras cargaba, actualizamos de inmediato
         if (reservaActual.dia) {
           cargarHoras(reservaActual.anio, reservaActual.mes, reservaActual.dia);
         }
       }
     } catch (err) {
-      console.log("Precarga en segundo plano falló, cambiando a modo directo.");
+      console.warn("Precarga en segundo plano en espera o falló. Se usará consulta bajo demanda.");
     }
   }
 
@@ -288,7 +285,6 @@
     document.getElementById('msg-no-horas').style.display = 'none';
     document.getElementById('btn-reservar').disabled = true;
 
-    // Si ya fue precargado, se muestra al instante sin demoras
     if (cacheHoras[keyCache]) {
       mostrarHoras(cacheHoras[keyCache]);
       return;
@@ -310,7 +306,7 @@
       }
     } catch (err) {
       document.getElementById('loader-horas').style.display = 'none';
-      alert("Error de conexión al servidor.");
+      alert("Error de conexión al servidor al cargar horas. Intente nuevamente.");
     }
   }
 
@@ -318,7 +314,7 @@
     document.getElementById('loader-horas').style.display = 'none';
     const contenedor = document.getElementById('contenedor-horas');
     contenedor.innerHTML = '';
-    if (horas.length === 0) { 
+    if (!horas || horas.length === 0) { 
       document.getElementById('msg-no-horas').style.display = 'block'; 
       return; 
     }
@@ -337,13 +333,16 @@
     });
   }
 
+  // ENVÍO ANTIBLOQUEO (Utiliza GET encubierto que evita errores de CORS)
   async function realizarReserva() {
     document.getElementById('btn-reservar').disabled = true;
     document.getElementById('btn-reservar').innerText = 'Procesando...';
 
     try {
-      const url = `${SCRIPT_URL}?action=procesarReserva&datos=${encodeURIComponent(JSON.stringify(reservaActual))}`;
-      const response = await fetch(url, { method: 'POST' });
+      const datosJson = encodeURIComponent(JSON.stringify(reservaActual));
+      const url = `${SCRIPT_URL}?action=procesarReserva&datos=${datosJson}`;
+      
+      const response = await fetch(url);
       const res = await response.json();
 
       if(res.exito) {
@@ -361,7 +360,7 @@
         document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
       }
     } catch (err) {
-      alert("Error enviando la reserva.");
+      alert("Error de conexión al enviar la reserva. Verifica tu conexión a internet.");
       document.getElementById('btn-reservar').disabled = false;
       document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
     }
