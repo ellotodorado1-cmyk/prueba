@@ -909,6 +909,7 @@
     const API_URL = 'https://script.google.com/macros/s/AKfycbwC1xxrIosWhH2TS4ZIRlwYYRUk-6GfPyPQh-7fEVfU7T6Bnvv__O9C1_2ZKBcWioA-_w/exec';
 
     let reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
+    let controllerCargaHoras = null; // Controlador para cancelar peticiones anteriores
 
     const optionsSF = { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric' };
     const formatterSF = new Intl.DateTimeFormat('en-US', optionsSF);
@@ -1000,13 +1001,24 @@
     }
 
     function seleccionarFecha(anio, mes, dia, elementoDiv) {
+      // Si ya hay una carga en proceso, ignoramos clics rápidos repetidos
+      if (document.getElementById('loader-horas').style.display === 'block') return;
+
       document.querySelectorAll(`#cal-grid-dias .cal-day`).forEach(el => el.classList.remove('selected'));
       elementoDiv.classList.add('selected');
-      reservaActual.anio = anio; reservaActual.mes = mes; reservaActual.dia = dia;
+      reservaActual.anio = anio; 
+      reservaActual.mes = mes; 
+      reservaActual.dia = dia;
       cargarHoras(anio, mes, dia);
     }
 
     function cargarHoras(anio, mes, dia) {
+      // 1. Cancelar petición previa si se hace clic en otra fecha rápidamente
+      if (controllerCargaHoras) {
+        controllerCargaHoras.abort();
+      }
+      controllerCargaHoras = new AbortController();
+
       document.getElementById('contenedor-horas').innerHTML = '';
       document.getElementById('loader-horas').style.display = 'block';
       document.getElementById('msg-no-horas').style.display = 'none';
@@ -1014,7 +1026,7 @@
 
       const url = `${API_URL}?anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
 
-      fetch(url)
+      fetch(url, { signal: controllerCargaHoras.signal })
         .then(res => res.text())
         .then(text => {
           try {
@@ -1027,11 +1039,15 @@
             }
           } catch (e) {
             console.error("Respuesta recibida no JSON:", text);
-            alert("El servicio tardó en responder. Por favor toca la fecha nuevamente.");
+            alert("Google Apps Script demoró en responder. Por favor selecciona la fecha nuevamente.");
             document.getElementById('loader-horas').style.display = 'none';
           }
         })
         .catch(err => {
+          if (err.name === 'AbortError') {
+            // Petición cancelada por cambio rápido de fecha (comportamiento normal)
+            return;
+          }
           alert("Error de conexión: " + err.message);
           document.getElementById('loader-horas').style.display = 'none';
         });
