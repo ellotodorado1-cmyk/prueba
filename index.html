@@ -260,7 +260,7 @@
     cargarHoras(anio, mes, dia);
   }
 
-  // FUNCIÓN MEJORADA: Reintentos automáticos para evitar fallos de Cold Start
+ // FUNCIÓN CON TIMEOUT DE 3 SEGUNDOS Y REINTENTOS RÁPIDOS
   async function cargarHoras(anio, mes, dia) {
     document.getElementById('contenedor-horas').innerHTML = '';
     document.getElementById('loader-horas').style.display = 'block';
@@ -269,11 +269,18 @@
 
     const url = `${WORKER_URL}?action=obtenerHoras&anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
     const MAX_INTENTOS = 3;
+    const TIMEOUT_MS = 3000; // Cancelar si tarda más de 3 segundos (3000 ms)
 
     for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
+      // Controller para forzar la cancelación del fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
       try {
         console.log(`Cargando horarios (Intento ${intento}/${MAX_INTENTOS})...`);
-        const response = await fetch(url);
+        
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId); // Limpiar el timer si respondió a tiempo
         
         if (!response.ok) {
           throw new Error(`Status ${response.status}`);
@@ -285,22 +292,28 @@
           throw new Error(horas.error);
         }
 
-        // Si tuvo éxito, mostramos las horas y cortamos la función
+        // Éxito: renderizar y salir
         mostrarHoras(horas);
         return;
 
       } catch (err) {
-        console.warn(`Intento ${intento} falló: ${err.message}`);
+        clearTimeout(timeoutId);
 
-        // Si es el último intento y falló, mostramos el error al usuario
+        if (err.name === 'AbortError') {
+          console.warn(`Intento ${intento} cancelado por tardar más de 3 segundos.`);
+        } else {
+          console.warn(`Intento ${intento} falló: ${err.message}`);
+        }
+
+        // Si fallaron todos los intentos, mostrar alerta
         if (intento === MAX_INTENTOS) {
           document.getElementById('loader-horas').style.display = 'none';
-          alert("Error al cargar horarios. Por favor, intente seleccionar el día nuevamente.");
+          alert("Error al cargar horarios. Intente nuevamente.");
           return;
         }
 
-        // Esperamos 1.5 segundos antes de reintentar para dar tiempo al script de despertar
-        await new Promise(res => setTimeout(res, 1500));
+        // Espera corta de 500 ms antes de intentar de nuevo
+        await new Promise(res => setTimeout(res, 500));
       }
     }
   }
