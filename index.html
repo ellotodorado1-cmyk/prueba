@@ -182,19 +182,32 @@
 
   const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-  // Función helper centralizada para peticiones al backend
-  async function apiCall(payload) {
-    try {
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) throw new Error('Error en la comunicación con el servidor.');
-      return await response.json();
-    } catch (err) {
-      console.error("API Call Error:", err);
-      return { exito: false, error: 'No se pudo conectar con el servidor. Inténtalo de nuevo.' };
+  // Función helper mejorada: incluye sistema de reintentos automáticos
+  async function apiCall(payload, reintentos = 3) {
+    for (let intento = 0; intento < reintentos; intento++) {
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) throw new Error('Error HTTP: ' + response.status);
+        
+        // Si tiene éxito, devolvemos el JSON y salimos del bucle
+        return await response.json();
+        
+      } catch (err) {
+        console.warn(`Intento ${intento + 1} fallido:`, err);
+        
+        // Si era el último intento disponible, devolvemos el error al usuario
+        if (intento === reintentos - 1) {
+          return { exito: false, error: 'La red está inestable o el servidor está demorando. Por favor, inténtalo de nuevo.' };
+        }
+        
+        // Si falló pero quedan intentos, esperamos 1 segundo antes de volver a intentar
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
   }
 
