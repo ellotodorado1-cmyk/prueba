@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reserva de Masajes</title>
+  <title>Reserva de Masajes - Silicon Valley</title>
   <style>
     :root {
       --primary: #c07a5f; --primary-hover: #a3644b;
       --bg: #fcf9f6; --card-bg: #ffffff; --text: #4a4a4a;
       --border: #e0d5ce; --error: #d9534f; --success: #5cb85c;
     }
-    * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
     .container { background: var(--card-bg); max-width: 600px; width: 100%; border-radius: 12px; box-shadow: 0 8px 24px rgba(192, 122, 95, 0.08); padding: 30px; }
     .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
@@ -159,57 +159,29 @@
 </div>
 
 <script>
-  // ⚠️ REEMPLAZA ESTA URL CON TU URL DE WEB APP DE GOOGLE APPS SCRIPT
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwC1xxrIosWhH2TS4ZIRlwYYRUk-6GfPyPQh-7fEVfU7T6Bnvv__O9C1_2ZKBcWioA-_w/exec';
+  // 🔴 REEMPLAZA ESTA URL CON TU WEB APP URL DE GOOGLE APPS SCRIPT
+  const SCRIPT_URL = 'https://script.google.com/macros/s/TU_SCRIPT_ID_AQUI/exec';
 
   let reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
+  let cacheHoras = {};
 
-  // Configuración de fecha según zona horaria PT
+  // Límite de 2 semanas basado en hora de San Francisco
   const optionsSF = { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric' };
   const formatterSF = new Intl.DateTimeFormat('en-US', optionsSF);
   const partsSF = formatterSF.formatToParts(new Date());
   
-  let sfYear = parseInt(partsSF.find(p => p.type === 'year').value, 10);
-  let sfMonth = parseInt(partsSF.find(p => p.type === 'month').value, 10) - 1;
-  let sfDay = parseInt(partsSF.find(p => p.type === 'day').value, 10);
+  let sfYear = parseInt(partsSF.find(p => p.type === 'year').value);
+  let sfMonth = parseInt(partsSF.find(p => p.type === 'month').value) - 1;
+  let sfDay = parseInt(partsSF.find(p => p.type === 'day').value);
 
   let hoySF = new Date(sfYear, sfMonth, sfDay);
   hoySF.setHours(0,0,0,0);
-  let maxDateSF = new Date(hoySF.getTime() + 14 * 24 * 60 * 60 * 1000);
+  let maxDateSF = new Date(hoySF.getTime() + 14 * 24 * 60 * 60 * 1000); // Límite de 2 semanas
   
   let currentMonth = hoySF.getMonth();
   let currentYear = hoySF.getFullYear();
 
   const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-
-  // Función helper mejorada: incluye sistema de reintentos automáticos
-  async function apiCall(payload, reintentos = 3) {
-    for (let intento = 0; intento < reintentos; intento++) {
-      try {
-        const response = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
-        
-        if (!response.ok) throw new Error('Error HTTP: ' + response.status);
-        
-        // Si tiene éxito, devolvemos el JSON y salimos del bucle
-        return await response.json();
-        
-      } catch (err) {
-        console.warn(`Intento ${intento + 1} fallido:`, err);
-        
-        // Si era el último intento disponible, devolvemos el error al usuario
-        if (intento === reintentos - 1) {
-          return { exito: false, error: 'La red está inestable o el servidor está demorando. Por favor, inténtalo de nuevo.' };
-        }
-        
-        // Si falló pero quedan intentos, esperamos 1 segundo antes de volver a intentar
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-  }
 
   function switchTab(tabId) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -233,15 +205,17 @@
     const s = document.getElementById('servicio');
     reservaActual.duracion = s.value;
     reservaActual.precio = s.options[s.selectedIndex].getAttribute('data-price');
-    reservaActual.nombre = document.getElementById('nombre').value.trim();
-    reservaActual.telefono = document.getElementById('telefono').value.trim();
+    reservaActual.nombre = document.getElementById('nombre').value;
+    reservaActual.telefono = document.getElementById('telefono').value;
     reservaActual.ciudad = document.getElementById('ciudad').value;
-    reservaActual.direccion = document.getElementById('direccion').value.trim();
-    reservaActual.email = document.getElementById('email').value.trim();
-    reservaActual.sugerencias = document.getElementById('sugerencias').value.trim();
+    reservaActual.direccion = document.getElementById('direccion').value;
+    reservaActual.email = document.getElementById('email').value;
+    reservaActual.sugerencias = document.getElementById('sugerencias').value;
     
+    cacheHoras = {};
     renderCalendar();
     volver('step-calendario');
+    precargarHorasDisponibles(); // Precarga rápida en segundo plano de las 2 semanas
   });
 
   function cambiarMes(dir) {
@@ -265,7 +239,7 @@
       let fechaBucle = new Date(currentYear, currentMonth, dia);
       let esFinDeSemana = (fechaBucle.getDay() === 0 || fechaBucle.getDay() === 6);
       let esPasado = fechaBucle < hoySF;
-      let esMuyLejos = fechaBucle > maxDateSF;
+      let esMuyLejos = fechaBucle > maxDateSF; // Control del límite de 2 semanas
       
       let div = document.createElement('div');
       div.className = 'cal-day';
@@ -283,6 +257,24 @@
     }
   }
 
+  // Precarga todas las horas de los 14 días para que la respuesta sea instantánea
+  async function precargarHorasDisponibles() {
+    try {
+      const url = `${SCRIPT_URL}?action=obtenerHorasPeriodo&duracion=${reservaActual.duracion}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.exito) {
+        cacheHoras = data.disponibilidad;
+        // Si el usuario ya había tocado un día mientras cargaba, actualizamos de inmediato
+        if (reservaActual.dia) {
+          cargarHoras(reservaActual.anio, reservaActual.mes, reservaActual.dia);
+        }
+      }
+    } catch (err) {
+      console.log("Precarga en segundo plano falló, cambiando a modo directo.");
+    }
+  }
+
   function seleccionarFecha(anio, mes, dia, elementoDiv) {
     document.querySelectorAll(`#cal-grid-dias .cal-day`).forEach(el => el.classList.remove('selected'));
     elementoDiv.classList.add('selected');
@@ -291,34 +283,45 @@
   }
 
   async function cargarHoras(anio, mes, dia) {
+    const keyCache = `${anio}-${mes}-${dia}`;
     document.getElementById('contenedor-horas').innerHTML = '';
-    document.getElementById('loader-horas').style.display = 'block';
     document.getElementById('msg-no-horas').style.display = 'none';
     document.getElementById('btn-reservar').disabled = true;
 
-    const res = await apiCall({
-      action: 'obtenerHoras',
-      anio: anio,
-      mes: mes,
-      dia: dia,
-      duracion: reservaActual.duracion
-    });
+    // Si ya fue precargado, se muestra al instante sin demoras
+    if (cacheHoras[keyCache]) {
+      mostrarHoras(cacheHoras[keyCache]);
+      return;
+    }
 
-    document.getElementById('loader-horas').style.display = 'none';
+    document.getElementById('loader-horas').style.display = 'block';
 
-    if (res.exito && Array.isArray(res.horas)) {
-      mostrarHoras(res.horas);
-    } else {
-      document.getElementById('msg-no-horas').style.display = 'block';
-      if (res.error) {
-        document.getElementById('msg-no-horas').innerText = res.error;
+    try {
+      const url = `${SCRIPT_URL}?action=obtenerHoras&anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      document.getElementById('loader-horas').style.display = 'none';
+      if (data.exito) {
+        cacheHoras[keyCache] = data.horas;
+        mostrarHoras(data.horas);
+      } else {
+        alert("Error consultando horas: " + data.error);
       }
+    } catch (err) {
+      document.getElementById('loader-horas').style.display = 'none';
+      alert("Error de conexión al servidor.");
     }
   }
 
   function mostrarHoras(horas) {
+    document.getElementById('loader-horas').style.display = 'none';
     const contenedor = document.getElementById('contenedor-horas');
-    if (horas.length === 0) { document.getElementById('msg-no-horas').style.display = 'block'; return; }
+    contenedor.innerHTML = '';
+    if (horas.length === 0) { 
+      document.getElementById('msg-no-horas').style.display = 'block'; 
+      return; 
+    }
 
     horas.forEach(h => {
       let div = document.createElement('div');
@@ -338,22 +341,27 @@
     document.getElementById('btn-reservar').disabled = true;
     document.getElementById('btn-reservar').innerText = 'Procesando...';
 
-    const res = await apiCall({
-      action: 'procesarReserva',
-      datos: reservaActual
-    });
+    try {
+      const url = `${SCRIPT_URL}?action=procesarReserva&datos=${encodeURIComponent(JSON.stringify(reservaActual))}`;
+      const response = await fetch(url, { method: 'POST' });
+      const res = await response.json();
 
-    if (res.exito) {
-      document.getElementById('resumen-reserva').innerHTML = `
-        <strong>Reserva #:</strong> ${res.numeroReserva} <br>
-        <strong>Fecha (PT):</strong> ${res.fecha} <br>
-        <strong>Cliente:</strong> ${reservaActual.nombre} <br>
-        <strong>Servicio:</strong> ${reservaActual.duracion} min ($${reservaActual.precio}) <br>
-        <strong>Método de Pago:</strong> Cash o Zelle
-      `;
-      volver('step-exito');
-    } else {
-      alert("Error: " + (res.error || "No se pudo realizar la reserva."));
+      if(res.exito) {
+        document.getElementById('resumen-reserva').innerHTML = `
+          <strong>Reserva #:</strong> ${res.numeroReserva} <br>
+          <strong>Fecha (PT):</strong> ${res.fecha} <br>
+          <strong>Cliente:</strong> ${reservaActual.nombre} <br>
+          <strong>Servicio:</strong> ${reservaActual.duracion} min ($${reservaActual.precio}) <br>
+          <strong>Método de Pago:</strong> Cash o Zelle
+        `;
+        volver('step-exito');
+      } else {
+        alert("Error: " + res.error);
+        document.getElementById('btn-reservar').disabled = false;
+        document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
+      }
+    } catch (err) {
+      alert("Error enviando la reserva.");
       document.getElementById('btn-reservar').disabled = false;
       document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
     }
@@ -362,6 +370,7 @@
   function reiniciarApp() {
     document.getElementById('form-datos').reset();
     reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
+    cacheHoras = {};
     document.getElementById('contenedor-horas').innerHTML = '';
     document.getElementById('btn-reservar').disabled = true;
     document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
@@ -374,25 +383,21 @@
 
   async function confirmarCancelar() {
     const num = document.getElementById('num-reserva-input').value.trim();
-    if (!num) { 
-      mostrarMensajeCancelar("Ingrese un número de reserva.", "error"); 
-      return; 
-    }
-
-    if (confirm("¿Seguro que desea cancelar?")) {
+    if(!num) { mostrarMensajeCancelar("Ingrese un número de reserva.", "error"); return; }
+    
+    if(confirm("¿Seguro que desea cancelar esta reserva?")) {
       document.getElementById('loader-cancelar').style.display = 'block';
-      document.getElementById('msg-cancelar').innerHTML = '';
+      try {
+        const url = `${SCRIPT_URL}?action=cancelarReserva&numeroReserva=${encodeURIComponent(num)}`;
+        const response = await fetch(url);
+        const res = await response.json();
 
-      const res = await apiCall({
-        action: 'gestionarReserva',
-        accion: 'CANCELAR',
-        numeroReserva: num
-      });
-
-      document.getElementById('loader-cancelar').style.display = 'none';
-      mostrarMensajeCancelar(res.exito ? res.mensaje : res.error, res.exito ? 'success' : 'error');
-      if (res.exito) {
-        document.getElementById('num-reserva-input').value = '';
+        document.getElementById('loader-cancelar').style.display = 'none';
+        mostrarMensajeCancelar(res.exito ? res.mensaje : res.error, res.exito ? 'success' : 'error');
+        if (res.exito) document.getElementById('num-reserva-input').value = '';
+      } catch (err) {
+        document.getElementById('loader-cancelar').style.display = 'none';
+        mostrarMensajeCancelar("Error al comunicarse con el servidor.", "error");
       }
     }
   }
