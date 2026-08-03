@@ -51,6 +51,7 @@
     .message.error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; display: block; }
     .summary-card { background: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: left; border: 1px dashed var(--border); }
     .timezone-badge { display: inline-block; background: #eef; color: #336; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; margin-bottom: 10px; font-weight: bold;}
+    .status-text { font-size: 0.85em; color: var(--primary); text-align: center; font-weight: 500; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -130,9 +131,10 @@
         <div class="cal-grid" id="cal-grid-dias"></div>
       </div>
 
+      <div id="status-carga" class="status-text"></div>
       <div id="loader-horas" class="loader"></div>
       <div id="contenedor-horas" class="time-grid"></div>
-      <p id="msg-no-horas" style="display:none; color: var(--error); font-size: 0.9em;">No hay disponibilidad.</p>
+      <p id="msg-no-horas" style="display:none; color: var(--error); text-align:center; font-size: 0.9em;"></p>
       
       <div style="margin-top: 20px;">
         <button id="btn-reservar" onclick="realizarReserva()" disabled>Confirmar Reserva</button>
@@ -159,11 +161,13 @@
 </div>
 
 <script>
-  // 🔴 REEMPLAZA ESTA URL CON LA TUA IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT
+  // 🔴 REEMPLAZA ESTA URL CON TU IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYgniqgjhNiBcxsHQZRN-UwYVo4zr2OhAXfUj-KCF-1HjGkTUl1u7txLxDIvT_pUAo/exec';
 
   let reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
-  let cacheHoras = {};
+  let cacheHoras = null; // Se inicializa como nulo para saber si la precarga ya terminó
+  let promesaPrecarga = null; // Promesa global para evitar peticiones duplicadas
+  let duracionPrecedente = null;
 
   const optionsSF = { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric' };
   const formatterSF = new Intl.DateTimeFormat('en-US', optionsSF);
@@ -175,7 +179,7 @@
 
   let hoySF = new Date(sfYear, sfMonth, sfDay);
   hoySF.setHours(0,0,0,0);
-  let maxDateSF = new Date(hoySF.getTime() + 14 * 24 * 60 * 60 * 1000); // Exactamente 2 semanas
+  let maxDateSF = new Date(hoySF.getTime() + 14 * 24 * 60 * 60 * 1000); 
   
   let currentMonth = hoySF.getMonth();
   let currentYear = hoySF.getFullYear();
@@ -202,7 +206,16 @@
   document.getElementById('form-datos').addEventListener('submit', function(e) {
     e.preventDefault();
     const s = document.getElementById('servicio');
-    reservaActual.duracion = s.value;
+    const nuevaDuracion = s.value;
+    
+    // Si cambió la duración, forzar nueva precarga
+    if (duracionPrecedente !== nuevaDuracion) {
+      cacheHoras = null;
+      promesaPrecarga = null;
+      duracionPrecedente = nuevaDuracion;
+    }
+
+    reservaActual.duracion = nuevaDuracion;
     reservaActual.precio = s.options[s.selectedIndex].getAttribute('data-price');
     reservaActual.nombre = document.getElementById('nombre').value;
     reservaActual.telefono = document.getElementById('telefono').value;
@@ -211,10 +224,12 @@
     reservaActual.email = document.getElementById('email').value;
     reservaActual.sugerencias = document.getElementById('sugerencias').value;
     
-    cacheHoras = {};
     renderCalendar();
     volver('step-calendario');
-    precargarHorasDisponibles();
+
+    if (!cacheHoras && !promesaPrecarga) {
+      precargarHorasDisponibles();
+    }
   });
 
   function cambiarMes(dir) {
@@ -256,40 +271,72 @@
     }
   }
 
-  async function precargarHorasDisponibles() {
-    try {
-      const url = `${SCRIPT_URL}?action=obtenerHorasPeriodo&duracion=${reservaActual.duracion}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.exito) {
-        cacheHoras = data.disponibilidad;
-        if (reservaActual.dia) {
-          cargarHoras(reservaActual.anio, reservaActual.mes, reservaActual.dia);
+  // Precarga los 14 días en 1 solo request y guarda en caché global
+  function precargarHorasDisponibles() {
+    document.getElementById('loader-horas').style.display = 'block';
+    document.getElementById('status-carga').innerText = 'Cargando disponibilidad completa...';
+    document.getElementById('msg-no-horas').style.display = 'none';
+
+    const url = `${SCRIPT_URL}?action=obtenerHorasPeriodo&duracion=${reservaActual.duracion}`;
+    
+    promesaPrecarga = fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('loader-horas').style.display = 'none';
+        document.getElementById('status-carga').innerText = '';
+        if (data.exito) {
+          cacheHoras = data.disponibilidad;
+          if (reservaActual.dia) {
+            mostrarHorasDiaSeleccionado();
+          }
+        } else {
+          document.getElementById('msg-no-horas').innerText = "Error: " + data.error;
+          document.getElementById('msg-no-horas').style.display = 'block';
         }
-      }
-    } catch (err) {
-      console.warn("Precarga en segundo plano en espera o falló. Se usará consulta bajo demanda.");
-    }
+      })
+      .catch(err => {
+        document.getElementById('loader-horas').style.display = 'none';
+        document.getElementById('status-carga').innerText = '';
+        document.getElementById('msg-no-horas').innerText = "Error de conexión con Google Calendar. Intente de nuevo.";
+        document.getElementById('msg-no-horas').style.display = 'block';
+        promesaPrecarga = null; // Permitir reintento
+      });
+
+    return promesaPrecarga;
   }
 
-  function seleccionarFecha(anio, mes, dia, elementoDiv) {
+  async function seleccionarFecha(anio, mes, dia, elementoDiv) {
     document.querySelectorAll(`#cal-grid-dias .cal-day`).forEach(el => el.classList.remove('selected'));
     elementoDiv.classList.add('selected');
     reservaActual.anio = anio; reservaActual.mes = mes; reservaActual.dia = dia;
-    cargarHoras(anio, mes, dia);
-  }
-
-  async function cargarHoras(anio, mes, dia) {
-    const keyCache = `${anio}-${mes}-${dia}`;
-    document.getElementById('contenedor-horas').innerHTML = '';
-    document.getElementById('msg-no-horas').style.display = 'none';
+    
     document.getElementById('btn-reservar').disabled = true;
 
-    if (cacheHoras[keyCache]) {
-      mostrarHoras(cacheHoras[keyCache]);
+    // Si la precarga global está corriendo, esperamos a que termine
+    if (promesaPrecarga && !cacheHoras) {
+      document.getElementById('loader-horas').style.display = 'block';
+      document.getElementById('status-carga').innerText = 'Espere un momento, finalizando carga...';
+      await promesaPrecarga;
+    }
+
+    // Si la caché falló, intenta consultar el día específico como respaldo
+    if (!cacheHoras) {
+      await cargarHoraEspecificaFallback(anio, mes, dia);
       return;
     }
 
+    mostrarHorasDiaSeleccionado();
+  }
+
+  function mostrarHorasDiaSeleccionado() {
+    const keyCache = `${reservaActual.anio}-${reservaActual.mes}-${reservaActual.dia}`;
+    const horas = cacheHoras ? cacheHoras[keyCache] : [];
+    mostrarHoras(horas);
+  }
+
+  async function cargarHoraEspecificaFallback(anio, mes, dia) {
+    document.getElementById('contenedor-horas').innerHTML = '';
+    document.getElementById('msg-no-horas').style.display = 'none';
     document.getElementById('loader-horas').style.display = 'block';
 
     try {
@@ -299,25 +346,31 @@
       
       document.getElementById('loader-horas').style.display = 'none';
       if (data.exito) {
-        cacheHoras[keyCache] = data.horas;
         mostrarHoras(data.horas);
       } else {
-        alert("Error consultando horas: " + data.error);
+        document.getElementById('msg-no-horas').innerText = "Error: " + data.error;
+        document.getElementById('msg-no-horas').style.display = 'block';
       }
     } catch (err) {
       document.getElementById('loader-horas').style.display = 'none';
-      alert("Error de conexión al servidor al cargar horas. Intente nuevamente.");
+      document.getElementById('msg-no-horas').innerText = "Error de conexión al cargar este día.";
+      document.getElementById('msg-no-horas').style.display = 'block';
     }
   }
 
   function mostrarHoras(horas) {
     document.getElementById('loader-horas').style.display = 'none';
+    document.getElementById('status-carga').innerText = '';
     const contenedor = document.getElementById('contenedor-horas');
     contenedor.innerHTML = '';
+    
     if (!horas || horas.length === 0) { 
+      document.getElementById('msg-no-horas').innerText = 'No hay horas disponibles para este día.';
       document.getElementById('msg-no-horas').style.display = 'block'; 
       return; 
     }
+
+    document.getElementById('msg-no-horas').style.display = 'none';
 
     horas.forEach(h => {
       let div = document.createElement('div');
@@ -333,7 +386,6 @@
     });
   }
 
-  // ENVÍO ANTIBLOQUEO (Utiliza GET encubierto que evita errores de CORS)
   async function realizarReserva() {
     document.getElementById('btn-reservar').disabled = true;
     document.getElementById('btn-reservar').innerText = 'Procesando...';
@@ -369,7 +421,9 @@
   function reiniciarApp() {
     document.getElementById('form-datos').reset();
     reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
-    cacheHoras = {};
+    cacheHoras = null;
+    promesaPrecarga = null;
+    duracionPrecedente = null;
     document.getElementById('contenedor-horas').innerHTML = '';
     document.getElementById('btn-reservar').disabled = true;
     document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
