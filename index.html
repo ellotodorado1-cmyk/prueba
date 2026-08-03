@@ -351,7 +351,12 @@
     document.getElementById('form-datos').reset();
     reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
     document.getElementById('contenedor-horas').innerHTML = '';
+    
+    // --- LÍNEAS A AGREGAR ---
     document.getElementById('btn-reservar').disabled = true;
+    document.getElementById('btn-reservar').innerText = 'Confirmar Reserva'; // <--- Restablece el texto original
+    // ------------------------
+
     volver('step-datos');
   }
 
