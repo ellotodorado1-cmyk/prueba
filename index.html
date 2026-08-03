@@ -698,7 +698,7 @@
         <img src="metodo-pago.png" alt="Cash y Zelle" class="pago-img">
       </div>
 
-      <!-- APLICACIÓN DE RESERVAS INTEGRADA (REEMPLAZO TOTAL DEL IFRAME) -->
+      <!-- APLICACIÓN DE RESERVAS INTEGRADA -->
       <div class="app-reserva-seccion">
         <div class="container">
           <div class="tabs">
@@ -1007,31 +1007,35 @@
     }
 
     function cargarHoras(anio, mes, dia) {
-  document.getElementById('contenedor-horas').innerHTML = '';
-  document.getElementById('loader-horas').style.display = 'block';
-  document.getElementById('msg-no-horas').style.display = 'none';
-  document.getElementById('btn-reservar').disabled = true;
+      document.getElementById('contenedor-horas').innerHTML = '';
+      document.getElementById('loader-horas').style.display = 'block';
+      document.getElementById('msg-no-horas').style.display = 'none';
+      document.getElementById('btn-reservar').disabled = true;
 
-  const url = `${API_URL}?anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
+      const url = `${API_URL}?anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
 
-  fetch(url, { method: 'GET', redirect: 'follow' })
-    .then(res => {
-      if (!res.ok) throw new Error("Error en la respuesta del servidor");
-      return res.json();
-    })
-    .then(res => {
-      if (res.exito) {
-        mostrarHoras(res.datos);
-      } else {
-        alert("Error: " + res.error);
-        document.getElementById('loader-horas').style.display = 'none';
-      }
-    })
-    .catch(err => {
-      alert("Error de comunicación: " + err.message);
-      document.getElementById('loader-horas').style.display = 'none';
-    });
-}
+      fetch(url)
+        .then(res => res.text())
+        .then(text => {
+          try {
+            const res = JSON.parse(text);
+            if (res.exito) {
+              mostrarHoras(res.datos);
+            } else {
+              alert("Aviso: " + res.error);
+              document.getElementById('loader-horas').style.display = 'none';
+            }
+          } catch (e) {
+            console.error("Respuesta recibida no JSON:", text);
+            alert("El servicio tardó en responder. Por favor toca la fecha nuevamente.");
+            document.getElementById('loader-horas').style.display = 'none';
+          }
+        })
+        .catch(err => {
+          alert("Error de conexión: " + err.message);
+          document.getElementById('loader-horas').style.display = 'none';
+        });
+    }
 
     function mostrarHoras(horas) {
       document.getElementById('loader-horas').style.display = 'none';
@@ -1063,19 +1067,26 @@
           datos: reservaActual
         })
       })
-      .then(res => res.json())
-      .then(res => {
-        if(res.exito) {
-          document.getElementById('resumen-reserva').innerHTML = `
-            <strong>Reserva #:</strong> ${res.numeroReserva} <br>
-            <strong>Fecha (PT):</strong> ${res.fecha} <br>
-            <strong>Cliente:</strong> ${reservaActual.nombre} <br>
-            <strong>Servicio:</strong> ${reservaActual.duracion} min ($${reservaActual.precio}) <br>
-            <strong>Método de Pago:</strong> Cash o Zelle
-          `;
-          volver('step-exito');
-        } else {
-          alert("Error: " + res.error);
+      .then(res => res.text())
+      .then(text => {
+        try {
+          const res = JSON.parse(text);
+          if(res.exito) {
+            document.getElementById('resumen-reserva').innerHTML = `
+              <strong>Reserva #:</strong> ${res.numeroReserva} <br>
+              <strong>Fecha (PT):</strong> ${res.fecha} <br>
+              <strong>Cliente:</strong> ${reservaActual.nombre} <br>
+              <strong>Servicio:</strong> ${reservaActual.duracion} min ($${reservaActual.precio}) <br>
+              <strong>Método de Pago:</strong> Cash o Zelle
+            `;
+            volver('step-exito');
+          } else {
+            alert("Error: " + res.error);
+            document.getElementById('btn-reservar').disabled = false;
+            document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
+          }
+        } catch(e) {
+          alert("Respuesta inesperada del servidor. Por favor verifica tus datos e inténtalo nuevamente.");
           document.getElementById('btn-reservar').disabled = false;
           document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
         }
@@ -1116,11 +1127,16 @@
             numeroReserva: num
           })
         })
-        .then(res => res.json())
-        .then(res => {
+        .then(res => res.text())
+        .then(text => {
           document.getElementById('loader-cancelar').style.display = 'none';
-          mostrarMensajeCancelar(res.exito ? res.mensaje : res.error, res.exito ? 'success' : 'error');
-          if (res.exito) document.getElementById('num-reserva-input').value = '';
+          try {
+            const res = JSON.parse(text);
+            mostrarMensajeCancelar(res.exito ? res.mensaje : res.error, res.exito ? 'success' : 'error');
+            if (res.exito) document.getElementById('num-reserva-input').value = '';
+          } catch(e) {
+            mostrarMensajeCancelar("Error procesando la cancelación.", "error");
+          }
         })
         .catch(err => {
           document.getElementById('loader-cancelar').style.display = 'none';
