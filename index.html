@@ -3,457 +3,286 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reserva de Masajes - Silicon Valley</title>
+  <title>Calendario de Citas</title>
   <style>
     :root {
-      --primary: #c07a5f; --primary-hover: #a3644b;
-      --bg: #fcf9f6; --card-bg: #ffffff; --text: #4a4a4a;
-      --border: #e0d5ce; --error: #d9534f; --success: #5cb85c;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --border: #e2e8f0;
+      --error-bg: #fef2f2;
+      --error-text: #991b1b;
     }
-    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
-    .container { background: var(--card-bg); max-width: 600px; width: 100%; border-radius: 12px; box-shadow: 0 8px 24px rgba(192, 122, 95, 0.08); padding: 30px; }
-    .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
-    .tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; font-weight: 600; color: #a0a0a0; transition: 0.3s; }
-    .tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); margin-bottom: -2px; }
-    .form-group { margin-bottom: 16px; }
-    label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 0.9em; }
-    input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 1em; outline: none; }
-    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(192,122,95,0.2); }
-    .note { font-size: 0.8em; color: #888; margin-top: 4px; display: block; }
-    button { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 1em; font-weight: 600; cursor: pointer; width: 100%; transition: 0.2s; }
-    button:hover:not(:disabled) { background: var(--primary-hover); }
-    button:disabled { background: #dcdcdc; cursor: not-allowed; }
-    button.secondary { background: #f0f0f0; color: var(--text); margin-top: 10px;}
-    button.danger { background: white; color: var(--error); border: 1px solid var(--error); margin-top: 10px; }
-    button.danger:hover { background: var(--error); color: white; }
-    .step { display: none; }
-    .step.active { display: block; animation: fadeIn 0.4s; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    
-    .calendar-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: #fff; margin-bottom: 15px; }
-    .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; }
-    .cal-nav { background: none; border: none; font-size: 1.2em; color: var(--primary); cursor: pointer; padding: 0 10px; width: auto; }
-    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
-    .cal-day-name { font-size: 0.8em; font-weight: 600; color: #888; padding-bottom: 5px; }
-    .cal-day { padding: 10px 0; border-radius: 6px; cursor: pointer; font-size: 0.9em; transition: 0.2s; }
-    .cal-day:hover:not(.disabled) { background: #f0e6e1; }
-    .cal-day.selected { background: var(--primary); color: white; font-weight: bold; }
-    .cal-day.disabled { color: #d0d0d0; cursor: not-allowed; background: transparent; }
-    
-    .time-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px; }
-    .time-slot { padding: 10px; border: 1px solid var(--primary); border-radius: 6px; text-align: center; cursor: pointer; color: var(--primary); font-weight: bold;}
-    .time-slot:hover, .time-slot.selected { background: var(--primary); color: white; }
-    .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .message { padding: 15px; border-radius: 6px; margin-bottom: 15px; display: none; text-align: center; }
-    .message.success { background: #dff0d8; color: #3c763d; display: block; }
-    .message.error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; display: block; }
-    .summary-card { background: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: left; border: 1px dashed var(--border); }
-    .timezone-badge { display: inline-block; background: #eef; color: #336; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; margin-bottom: 10px; font-weight: bold;}
-    .status-text { font-size: 0.85em; color: var(--primary); text-align: center; font-weight: 500; margin-bottom: 10px; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .step {
+      display: none;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 1.25rem;
+      color: var(--text);
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    select, input[type="date"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 1rem;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: #64748b;
+      margin-right: 8px;
+    }
+
+    .btn-secondary:hover {
+      background-color: #475569;
+    }
+
+    .grid-horas {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .hora-btn {
+      padding: 8px;
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      background: white;
+      color: var(--primary);
+      text-align: center;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .hora-btn:hover {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .loader {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: #64748b;
+    }
+
+    .error-banner {
+      display: none;
+      background-color: var(--error-bg);
+      color: var(--error-text);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      border: 1px solid #fecaca;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab('agendar')">Agendar Reserva</div>
-    <div class="tab" onclick="switchTab('cancelar')">Cancelar Reserva</div>
+  
+  <div id="errorBanner" class="error-banner"></div>
+
+  <!-- PASO 1: SELECCIÓN DE SERVICIO -->
+  <div id="paso1" class="step active">
+    <h2>1. Selecciona el servicio</h2>
+    <label for="servicioSelect">Duración del servicio:</label>
+    <select id="servicioSelect">
+      <option value="30">Consulta corta (30 min)</option>
+      <option value="60" selected>Servicio Estándar (1 hora)</option>
+      <option value="120">Servicio Extendido (2 horas)</option>
+    </select>
+    <button class="btn" onclick="irAlCalendario()">Ver disponibilidad</button>
   </div>
 
-  <div id="tab-agendar" class="step active">
-    <div id="step-datos" class="step active">
-      <form id="form-datos">
-        <div class="form-group"><label>Nombre completo *</label><input type="text" id="nombre" required></div>
-        <div class="form-group"><label>Teléfono *</label><input type="tel" id="telefono" required></div>
-        <div class="form-group"><label>Ciudad en Silicon Valley *</label>
-          <select id="ciudad" required>
-            <option value="">Seleccione una ciudad...</option>
-            <option value="Atherton">Atherton</option>
-            <option value="Belmont">Belmont</option>
-            <option value="Campbell">Campbell</option>
-            <option value="Cupertino">Cupertino</option>
-            <option value="East Palo Alto">East Palo Alto</option>
-            <option value="Fremont">Fremont</option>
-            <option value="Los Altos">Los Altos</option>
-            <option value="Los Altos Hills">Los Altos Hills</option>
-            <option value="Los Gatos">Los Gatos</option>
-            <option value="Menlo Park">Menlo Park</option>
-            <option value="Milpitas">Milpitas</option>
-            <option value="Monte Sereno">Monte Sereno</option>
-            <option value="Mountain View">Mountain View</option>
-            <option value="Newark">Newark</option>
-            <option value="Palo Alto">Palo Alto</option>
-            <option value="Portola Valley">Portola Valley</option>
-            <option value="Redwood City">Redwood City</option>
-            <option value="San Carlos">San Carlos</option>
-            <option value="San José">San José</option>
-            <option value="Santa Clara">Santa Clara</option>
-            <option value="Saratoga">Saratoga</option>
-            <option value="Sunnyvale">Sunnyvale</option>
-            <option value="Woodside">Woodside</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Dirección exacta *</label><input type="text" id="direccion" required></div>
-        <div class="form-group"><label>Tiempo de Servicio y Pago *</label>
-          <select id="servicio" required>
-            <option value="">Seleccione duración</option>
-            <option value="60" data-price="100">1 hora - $100 (Cash o Zelle)</option>
-            <option value="90" data-price="150">1 hora y 30 minutos - $150 (Cash o Zelle)</option>
-            <option value="120" data-price="200">2 horas - $200 (Cash o Zelle)</option>
-            <option value="150" data-price="250">2 horas y 30 minutos - $250 (Cash o Zelle)</option>
-            <option value="180" data-price="300">3 horas - $300 (Cash o Zelle)</option>
-            <option value="210" data-price="350">3 horas y 30 minutos - $350 (Cash o Zelle)</option>
-            <option value="240" data-price="400">4 horas - $400 (Cash o Zelle)</option>
-            <option value="270" data-price="450">4 horas y 30 minutos - $450 (Cash o Zelle)</option>
-            <option value="300" data-price="500">5 horas - $500 (Cash o Zelle)</option>
-            <option value="330" data-price="550">5 horas y 30 minutos - $550 (Cash o Zelle)</option>
-            <option value="360" data-price="600">6 horas - $600 (Cash o Zelle)</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Correo electrónico (Opcional)</label><input type="email" id="email"><span class="note">* Necesario para confirmación.</span></div>
-        <div class="form-group"><label>Sugerencias (Opcional)</label><textarea id="sugerencias" rows="2"></textarea></div>
-        <button type="submit">Continuar al Calendario</button>
-      </form>
-    </div>
+  <!-- PASO 2: CALENDARIO Y HORAS -->
+  <div id="paso2" class="step">
+    <h2>2. Selecciona Fecha y Hora</h2>
+    
+    <label for="fechaInput">Fecha:</label>
+    <input type="date" id="fechaInput" onchange="mostrarHorasDeFecha(this.value)">
 
-    <div id="step-calendario" class="step">
-      <h3 style="margin-top:0;">Selecciona Fecha y Hora</h3>
-      <div class="timezone-badge">🌎 Hora de California (PT)</div>
-      
-      <div class="calendar-container">
-        <div class="cal-header">
-          <button class="cal-nav" onclick="cambiarMes(-1)">&#10094;</button>
-          <span id="cal-mes-anio"></span>
-          <button class="cal-nav" onclick="cambiarMes(1)">&#10095;</button>
-        </div>
-        <div class="cal-grid" id="cal-grid-dias"></div>
-      </div>
+    <div id="loader" class="loader">Cargando disponibilidad de Google Calendar...</div>
+    
+    <div id="horasContainer"></div>
 
-      <div id="status-carga" class="status-text"></div>
-      <div id="loader-horas" class="loader"></div>
-      <div id="contenedor-horas" class="time-grid"></div>
-      <p id="msg-no-horas" style="display:none; color: var(--error); text-align:center; font-size: 0.9em;"></p>
-      
-      <div style="margin-top: 20px;">
-        <button id="btn-reservar" onclick="realizarReserva()" disabled>Confirmar Reserva</button>
-        <button class="secondary" onclick="volver('step-datos')">Volver atrás</button>
-      </div>
-    </div>
-
-    <div id="step-exito" class="step" style="text-align: center;">
-      <h2 style="color: var(--success);">¡Reserva Exitosa!</h2>
-      <div id="resumen-reserva" class="summary-card"></div>
-      <button onclick="reiniciarApp()">Realizar otra reserva</button>
+    <div style="margin-top: 24px;">
+      <button class="btn btn-secondary" onclick="volverAtras()">Volver atrás</button>
     </div>
   </div>
 
-  <div id="tab-cancelar" class="step">
-    <div id="cancelar-inicio" class="step active">
-      <div class="form-group"><label>Número de Reserva</label><input type="text" id="num-reserva-input" placeholder="Ej: RES-ABC123"></div>
-      <p style="font-size: 0.85em; color: #666;">Nota: Las cancelaciones requieren mínimo <strong>1 hora y 40 minutos</strong> de anticipación.</p>
-      <div id="msg-cancelar"></div>
-      <div id="loader-cancelar" class="loader"></div>
-      <button class="danger" onclick="confirmarCancelar()">Confirmar Cancelación</button>
-    </div>
-  </div>
 </div>
 
 <script>
-  // 🔴 REEMPLAZA ESTA URL CON TU IMPLEMENTACIÓN DE GOOGLE APPS SCRIPT
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYgniqgjhNiBcxsHQZRN-UwYVo4zr2OhAXfUj-KCF-1HjGkTUl1u7txLxDIvT_pUAo/exec';
-
-  let reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
-  let cacheHoras = null; // Se inicializa como nulo para saber si la precarga ya terminó
-  let promesaPrecarga = null; // Promesa global para evitar peticiones duplicadas
+  // ==========================================
+  // ESTADO GLOBAL Y CACHÉ
+  // ==========================================
+  let cacheDisponibilidad = null;
   let duracionPrecedente = null;
 
-  const optionsSF = { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric' };
-  const formatterSF = new Intl.DateTimeFormat('en-US', optionsSF);
-  const partsSF = formatterSF.formatToParts(new Date());
-  
-  let sfYear = parseInt(partsSF.find(p => p.type === 'year').value);
-  let sfMonth = parseInt(partsSF.find(p => p.type === 'month').value) - 1;
-  let sfDay = parseInt(partsSF.find(p => p.type === 'day').value);
+  // Establecer fecha mínima como hoy
+  const hoyISO = new Date().toISOString().split('T')[0];
+  document.getElementById('fechaInput').min = hoyISO;
+  document.getElementById('fechaInput').value = hoyISO;
 
-  let hoySF = new Date(sfYear, sfMonth, sfDay);
-  hoySF.setHours(0,0,0,0);
-  let maxDateSF = new Date(hoySF.getTime() + 14 * 24 * 60 * 60 * 1000); 
-  
-  let currentMonth = hoySF.getMonth();
-  let currentYear = hoySF.getFullYear();
-
-  const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-
-  function switchTab(tabId) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.container > .step').forEach(c => c.classList.remove('active'));
-    if (tabId === 'agendar') {
-      document.querySelector('.tab:nth-child(1)').classList.add('active');
-      document.getElementById('tab-agendar').classList.add('active');
-    } else {
-      document.querySelector('.tab:nth-child(2)').classList.add('active');
-      document.getElementById('tab-cancelar').classList.add('active');
-    }
-  }
-
-  function volver(stepId) {
-    document.querySelectorAll('#tab-agendar .step').forEach(s => s.classList.remove('active'));
-    document.getElementById(stepId).classList.add('active');
-  }
-
-  document.getElementById('form-datos').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const s = document.getElementById('servicio');
-    const nuevaDuracion = s.value;
+  /**
+   * Navega del Paso 1 al Paso 2. 
+   * Solo realiza la consulta si la duración del servicio ha cambiado.
+   */
+  function irAlCalendario() {
+    const nuevaDuracion = parseInt(document.getElementById('servicioSelect').value);
     
-    // Si cambió la duración, forzar nueva precarga
-    if (duracionPrecedente !== nuevaDuracion) {
-      cacheHoras = null;
-      promesaPrecarga = null;
-      duracionPrecedente = nuevaDuracion;
-    }
+    ocultarError();
+    mostrarPaso('paso2');
 
-    reservaActual.duracion = nuevaDuracion;
-    reservaActual.precio = s.options[s.selectedIndex].getAttribute('data-price');
-    reservaActual.nombre = document.getElementById('nombre').value;
-    reservaActual.telefono = document.getElementById('telefono').value;
-    reservaActual.ciudad = document.getElementById('ciudad').value;
-    reservaActual.direccion = document.getElementById('direccion').value;
-    reservaActual.email = document.getElementById('email').value;
-    reservaActual.sugerencias = document.getElementById('sugerencias').value;
-    
-    renderCalendar();
-    volver('step-calendario');
-
-    if (!cacheHoras && !promesaPrecarga) {
-      precargarHorasDisponibles();
-    }
-  });
-
-  function cambiarMes(dir) {
-    currentMonth += dir;
-    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-    else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-    renderCalendar();
-  }
-
-  function renderCalendar() {
-    document.getElementById('cal-mes-anio').innerText = `${meses[currentMonth]} ${currentYear}`;
-    const grid = document.getElementById('cal-grid-dias');
-    grid.innerHTML = '<div class="cal-day-name">Do</div><div class="cal-day-name">Lu</div><div class="cal-day-name">Ma</div><div class="cal-day-name">Mi</div><div class="cal-day-name">Ju</div><div class="cal-day-name">Vi</div><div class="cal-day-name">Sa</div>';
-
-    let primerDia = new Date(currentYear, currentMonth, 1).getDay();
-    let diasEnMes = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-    for (let i = 0; i < primerDia; i++) grid.innerHTML += `<div></div>`;
-
-    for (let dia = 1; dia <= diasEnMes; dia++) {
-      let fechaBucle = new Date(currentYear, currentMonth, dia);
-      let esFinDeSemana = (fechaBucle.getDay() === 0 || fechaBucle.getDay() === 6);
-      let esPasado = fechaBucle < hoySF;
-      let esMuyLejos = fechaBucle > maxDateSF;
-      
-      let div = document.createElement('div');
-      div.className = 'cal-day';
-      div.innerText = dia;
-
-      if (esFinDeSemana || esPasado || esMuyLejos) {
-        div.classList.add('disabled');
-      } else {
-        div.onclick = () => seleccionarFecha(currentYear, currentMonth, dia, div);
-        if (reservaActual.anio === currentYear && reservaActual.mes === currentMonth && reservaActual.dia === dia) {
-          div.classList.add('selected');
-        }
-      }
-      grid.appendChild(div);
-    }
-  }
-
-  // Precarga los 14 días en 1 solo request y guarda en caché global
-  function precargarHorasDisponibles() {
-    document.getElementById('loader-horas').style.display = 'block';
-    document.getElementById('status-carga').innerText = 'Cargando disponibilidad completa...';
-    document.getElementById('msg-no-horas').style.display = 'none';
-
-    const url = `${SCRIPT_URL}?action=obtenerHorasPeriodo&duracion=${reservaActual.duracion}`;
-    
-    promesaPrecarga = fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('loader-horas').style.display = 'none';
-        document.getElementById('status-carga').innerText = '';
-        if (data.exito) {
-          cacheHoras = data.disponibilidad;
-          if (reservaActual.dia) {
-            mostrarHorasDiaSeleccionado();
-          }
-        } else {
-          document.getElementById('msg-no-horas').innerText = "Error: " + data.error;
-          document.getElementById('msg-no-horas').style.display = 'block';
-        }
-      })
-      .catch(err => {
-        document.getElementById('loader-horas').style.display = 'none';
-        document.getElementById('status-carga').innerText = '';
-        document.getElementById('msg-no-horas').innerText = "Error de conexión con Google Calendar. Intente de nuevo.";
-        document.getElementById('msg-no-horas').style.display = 'block';
-        promesaPrecarga = null; // Permitir reintento
-      });
-
-    return promesaPrecarga;
-  }
-
-  async function seleccionarFecha(anio, mes, dia, elementoDiv) {
-    document.querySelectorAll(`#cal-grid-dias .cal-day`).forEach(el => el.classList.remove('selected'));
-    elementoDiv.classList.add('selected');
-    reservaActual.anio = anio; reservaActual.mes = mes; reservaActual.dia = dia;
-    
-    document.getElementById('btn-reservar').disabled = true;
-
-    // Si la precarga global está corriendo, esperamos a que termine
-    if (promesaPrecarga && !cacheHoras) {
-      document.getElementById('loader-horas').style.display = 'block';
-      document.getElementById('status-carga').innerText = 'Espere un momento, finalizando carga...';
-      await promesaPrecarga;
-    }
-
-    // Si la caché falló, intenta consultar el día específico como respaldo
-    if (!cacheHoras) {
-      await cargarHoraEspecificaFallback(anio, mes, dia);
+    // Si ya tenemos datos en caché para la misma duración, los reutilizamos sin recargar
+    if (cacheDisponibilidad && duracionPrecedente === nuevaDuracion) {
+      mostrarHorasDeFecha(document.getElementById('fechaInput').value);
       return;
     }
 
-    mostrarHorasDiaSeleccionado();
+    // Si cambió la duración o es la primera carga, consultamos al backend
+    duracionPrecedente = nuevaDuracion;
+    cargarHorariosServidor(nuevaDuracion);
   }
 
-  function mostrarHorasDiaSeleccionado() {
-    const keyCache = `${reservaActual.anio}-${reservaActual.mes}-${reservaActual.dia}`;
-    const horas = cacheHoras ? cacheHoras[keyCache] : [];
-    mostrarHoras(horas);
+  /**
+   * Regresa al Paso 1 manteniendo los datos intactos en memoria.
+   */
+  function volverAtras() {
+    ocultarError();
+    mostrarPaso('paso1');
   }
 
-  async function cargarHoraEspecificaFallback(anio, mes, dia) {
-    document.getElementById('contenedor-horas').innerHTML = '';
-    document.getElementById('msg-no-horas').style.display = 'none';
-    document.getElementById('loader-horas').style.display = 'block';
+  /**
+   * Consulta al servidor (Codigo.gs) con lógica de renderizado
+   */
+  function cargarHorariosServidor(duracion) {
+    mostrarLoader(true);
+    document.getElementById('horasContainer').innerHTML = '';
 
-    try {
-      const url = `${SCRIPT_URL}?action=obtenerHoras&anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      document.getElementById('loader-horas').style.display = 'none';
-      if (data.exito) {
-        mostrarHoras(data.horas);
-      } else {
-        document.getElementById('msg-no-horas').innerText = "Error: " + data.error;
-        document.getElementById('msg-no-horas').style.display = 'block';
-      }
-    } catch (err) {
-      document.getElementById('loader-horas').style.display = 'none';
-      document.getElementById('msg-no-horas').innerText = "Error de conexión al cargar este día.";
-      document.getElementById('msg-no-horas').style.display = 'block';
+    google.script.run
+      .withSuccessHandler(function(datos) {
+        mostrarLoader(false);
+        cacheDisponibilidad = datos;
+        mostrarHorasDeFecha(document.getElementById('fechaInput').value);
+      })
+      .withFailureHandler(function(error) {
+        mostrarLoader(false);
+        mostrarError("Hubo un problema de conexión al obtener la disponibilidad. Inténtalo de nuevo.");
+        console.error("Error devuelto por Apps Script:", error);
+      })
+      .obtenerDisponibilidad(duracion);
+  }
+
+  /**
+   * Muestra las horas guardadas en la caché para la fecha elegida
+   */
+  function mostrarHorasDeFecha(fecha) {
+    const container = document.getElementById('horasContainer');
+    container.innerHTML = '';
+
+    if (!cacheDisponibilidad) return;
+
+    const horasDisponibles = cacheDisponibilidad[fecha] || [];
+
+    if (horasDisponibles.length === 0) {
+      container.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">No hay horarios disponibles para esta fecha.</p>';
+      return;
     }
-  }
 
-  function mostrarHoras(horas) {
-    document.getElementById('loader-horas').style.display = 'none';
-    document.getElementById('status-carga').innerText = '';
-    const contenedor = document.getElementById('contenedor-horas');
-    contenedor.innerHTML = '';
-    
-    if (!horas || horas.length === 0) { 
-      document.getElementById('msg-no-horas').innerText = 'No hay horas disponibles para este día.';
-      document.getElementById('msg-no-horas').style.display = 'block'; 
-      return; 
-    }
+    const grid = document.createElement('div');
+    grid.className = 'grid-horas';
 
-    document.getElementById('msg-no-horas').style.display = 'none';
-
-    horas.forEach(h => {
-      let div = document.createElement('div');
-      div.className = 'time-slot';
-      div.innerText = h.etiqueta;
-      div.onclick = function() {
-        document.querySelectorAll('#contenedor-horas .time-slot').forEach(el => el.classList.remove('selected'));
-        this.classList.add('selected');
-        reservaActual.horaInicioMs = h.valor;
-        document.getElementById('btn-reservar').disabled = false;
+    horasDisponibles.forEach(hora => {
+      const btn = document.createElement('button');
+      btn.className = 'hora-btn';
+      btn.innerText = hora;
+      btn.onclick = function() {
+        alert(`Has seleccionado el día ${fecha} a las ${hora}`);
       };
-      contenedor.appendChild(div);
+      grid.appendChild(btn);
     });
+
+    container.appendChild(grid);
   }
 
-  async function realizarReserva() {
-    document.getElementById('btn-reservar').disabled = true;
-    document.getElementById('btn-reservar').innerText = 'Procesando...';
-
-    try {
-      const datosJson = encodeURIComponent(JSON.stringify(reservaActual));
-      const url = `${SCRIPT_URL}?action=procesarReserva&datos=${datosJson}`;
-      
-      const response = await fetch(url);
-      const res = await response.json();
-
-      if(res.exito) {
-        document.getElementById('resumen-reserva').innerHTML = `
-          <strong>Reserva #:</strong> ${res.numeroReserva} <br>
-          <strong>Fecha (PT):</strong> ${res.fecha} <br>
-          <strong>Cliente:</strong> ${reservaActual.nombre} <br>
-          <strong>Servicio:</strong> ${reservaActual.duracion} min ($${reservaActual.precio}) <br>
-          <strong>Método de Pago:</strong> Cash o Zelle
-        `;
-        volver('step-exito');
-      } else {
-        alert("Error: " + res.error);
-        document.getElementById('btn-reservar').disabled = false;
-        document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
-      }
-    } catch (err) {
-      alert("Error de conexión al enviar la reserva. Verifica tu conexión a internet.");
-      document.getElementById('btn-reservar').disabled = false;
-      document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
-    }
+  // --- FUNCIONES AUXILIARES ---
+  function mostrarPaso(idPaso) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(idPaso).classList.add('active');
   }
 
-  function reiniciarApp() {
-    document.getElementById('form-datos').reset();
-    reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
-    cacheHoras = null;
-    promesaPrecarga = null;
-    duracionPrecedente = null;
-    document.getElementById('contenedor-horas').innerHTML = '';
-    document.getElementById('btn-reservar').disabled = true;
-    document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
-    volver('step-datos');
+  function mostrarLoader(visible) {
+    document.getElementById('loader').style.display = visible ? 'block' : 'none';
   }
 
-  function mostrarMensajeCancelar(msg, tipo) {
-    document.getElementById('msg-cancelar').innerHTML = `<div class="message ${tipo}">${msg}</div>`;
+  function mostrarError(mensaje) {
+    const banner = document.getElementById('errorBanner');
+    banner.innerText = mensaje;
+    banner.style.display = 'block';
   }
 
-  async function confirmarCancelar() {
-    const num = document.getElementById('num-reserva-input').value.trim();
-    if(!num) { mostrarMensajeCancelar("Ingrese un número de reserva.", "error"); return; }
-    
-    if(confirm("¿Seguro que desea cancelar esta reserva?")) {
-      document.getElementById('loader-cancelar').style.display = 'block';
-      try {
-        const url = `${SCRIPT_URL}?action=cancelarReserva&numeroReserva=${encodeURIComponent(num)}`;
-        const response = await fetch(url);
-        const res = await response.json();
-
-        document.getElementById('loader-cancelar').style.display = 'none';
-        mostrarMensajeCancelar(res.exito ? res.mensaje : res.error, res.exito ? 'success' : 'error');
-        if (res.exito) document.getElementById('num-reserva-input').value = '';
-      } catch (err) {
-        document.getElementById('loader-cancelar').style.display = 'none';
-        mostrarMensajeCancelar("Error al comunicarse con el servidor.", "error");
-      }
-    }
+  function ocultarError() {
+    const banner = document.getElementById('errorBanner');
+    banner.style.display = 'none';
   }
 </script>
+
 </body>
 </html>
