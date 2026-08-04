@@ -735,12 +735,8 @@
   </script>
 
   <script>
-    // URL DE TU DESPLIEGUE DE APPS SCRIPT (POST para reservar/cancelar)
+    // URL DE TU DESPLIEGUE DE APPS SCRIPT
     const API_URL = 'https://script.google.com/macros/s/AKfycbzECJPTQWUYs3959atjqWt-FWBpeGClmREJDB38B9G1zv66T0RNQJDFPesX01fxkqJn/exec';
-
-    // PEGA AQUÍ EL FILE ID DE GOOGLE DRIVE DEL ARCHIVO 'disponibilidad_loto_dorado.json'
-    const DRIVE_FILE_ID = '1wCyQ37lqQH-yG-vBH9gOeJzpgPXJEjUk';
-    const CACHE_URL = `https://lh3.googleusercontent.com/d/${DRIVE_FILE_ID}`;
 
     let datosCache = null;
     let reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
@@ -762,14 +758,14 @@
 
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-    // Descarga inicial de la caché instantánea
+    // Descarga inicial usando directamente la API de Apps Script (evita CORS)
     async function cargarCacheInicial() {
       try {
-        const res = await fetch(CACHE_URL);
+        const res = await fetch(API_URL);
         const json = await res.json();
-        datosCache = json.datos;
+        datosCache = json.datos || json;
       } catch (e) {
-        console.warn("No se pudo pre-cargar la caché de Drive todavía:", e);
+        console.warn("No se pudo cargar la disponibilidad en este momento:", e);
       }
     }
     cargarCacheInicial();
@@ -860,17 +856,19 @@
 
       const claveFecha = `${anio}-${mes}-${dia}`;
       
-      // Si la caché no ha cargado, hace un intento rápido de fallback
       if (!datosCache) {
         document.getElementById('loader-horas').style.display = 'block';
-        fetch(CACHE_URL).then(r => r.json()).then(j => {
-          datosCache = j.datos;
-          document.getElementById('loader-horas').style.display = 'none';
-          procesarYMostrarHoras(datosCache[claveFecha] || []);
-        }).catch(() => {
-          document.getElementById('loader-horas').style.display = 'none';
-          document.getElementById('msg-no-horas').style.display = 'block';
-        });
+        fetch(API_URL)
+          .then(r => r.json())
+          .then(j => {
+            datosCache = j.datos || j;
+            document.getElementById('loader-horas').style.display = 'none';
+            procesarYMostrarHoras(datosCache[claveFecha] || []);
+          })
+          .catch(() => {
+            document.getElementById('loader-horas').style.display = 'none';
+            document.getElementById('msg-no-horas').style.display = 'block';
+          });
         return;
       }
 
@@ -882,12 +880,9 @@
       const duracionMs = parseInt(reservaActual.duracion) * 60000;
       const limiteJornadaHora = 20;
 
-      // Filtrar según la duración del servicio seleccionado y las 2 horas de anticipación
       const horasValidas = horasBase.filter(h => {
-        // Regla: Antelación mínima de 2 horas
         if (h.valor - ahora < 2 * 60 * 60 * 1000) return false;
 
-        // Regla: Cita no debe terminar después de las 8 PM (20:00)
         const finCita = new Date(h.valor + duracionMs);
         if (finCita.getHours() > limiteJornadaHora || (finCita.getHours() === limiteJornadaHora && finCita.getMinutes() > 0)) {
           return false;
@@ -940,7 +935,6 @@
             <strong>Método de Pago:</strong> Cash o Zelle
           `;
           volver('step-exito');
-          // Actualizar la caché local tras reservar
           setTimeout(cargarCacheInicial, 3000);
         } else {
           alert("Error: " + res.error);
