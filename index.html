@@ -698,7 +698,7 @@
         <img src="metodo-pago.png" alt="Cash y Zelle" class="pago-img">
       </div>
 
-      <!-- APLICACIÓN DE RESERVAS INTEGRADA (REEMPLAZO TOTAL DEL IFRAME) -->
+      <!-- APLICACIÓN DE RESERVAS INTEGRADA -->
       <div class="app-reserva-seccion">
         <div class="container">
           <div class="tabs">
@@ -903,7 +903,7 @@
     });
   </script>
 
-  <!-- SCRIPT DE LÓGICA DE APLICACIÓN DE RESERVAS CON APPS SCRIPT -->
+  <!-- SCRIPT DE LÓGICA DE APLICACIÓN DE RESERVAS VIA DOGET -->
   <script>
     // URL DE TU DESPLIEGUE DE APPS SCRIPT
     const API_URL = 'https://script.google.com/macros/s/AKfycbyaQ1ThjmnJZ1uVzqsXkYzH6eZWJ5mCc6HI8J0s1TsQc2hvq2iCGRf4xo7bwLDZYeRKEw/exec';
@@ -926,6 +926,14 @@
     let currentYear = hoySF.getFullYear();
 
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+    // Función auxiliar para realizar llamadas GET seguras con Payload
+    async function llamarAppsScript(payloadObj) {
+      const payloadString = encodeURIComponent(JSON.stringify(payloadObj));
+      const url = `${API_URL}?payload=${payloadString}`;
+      const response = await fetch(url, { method: 'GET' });
+      return await response.json();
+    }
 
     function switchTab(tabId) {
       document.querySelectorAll('.app-reserva-seccion .tab').forEach(t => t.classList.remove('active'));
@@ -1006,46 +1014,35 @@
       cargarHoras(anio, mes, dia);
     }
 
-    // CARGAR HORAS CON REINTENTO RÁPIDO SILENCIOSO
-    async function cargarHoras(anio, mes, dia) {
+    function cargarHoras(anio, mes, dia) {
       document.getElementById('contenedor-horas').innerHTML = '';
       document.getElementById('loader-horas').style.display = 'block';
       document.getElementById('msg-no-horas').style.display = 'none';
       document.getElementById('btn-reservar').disabled = true;
 
-      const url = `${API_URL}?anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
-      const MAX_INTENTOS = 4;
-
-      for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
-        try {
-          const res = await fetch(url, { redirect: 'follow' });
-          
-          if (!res.ok) {
-            throw new Error(`Servidor ocupado (HTTP ${res.status})`);
-          }
-
-          const data = await res.json();
-
-          if (data.exito) {
-            mostrarHoras(data.datos);
-            return; // ¡Éxito! Salimos de la función sin alertar al usuario
-          } else {
-            throw new Error(data.error || "Formato de datos erróneo");
-          }
-
-        } catch (err) {
-          console.warn(`Intento ${intento} falló: ${err.message}. Reintentando de inmediato...`);
-          
-          if (intento === MAX_INTENTOS) {
-            document.getElementById('loader-horas').style.display = 'none';
-            alert("No se pudieron cargar los horarios en este momento. Intenta pulsar la fecha otra vez.");
-            return;
-          }
-
-          // Espera imperceptible de solo 250 milisegundos para reintentar instantáneamente
-          await new Promise(r => setTimeout(r, 250));
+      const payload = {
+        accion: 'obtenerHorasDisponibles',
+        parametros: {
+          anio: anio,
+          mes: mes,
+          dia: dia,
+          duracionCita: reservaActual.duracion
         }
-      }
+      };
+
+      llamarAppsScript(payload)
+        .then(res => {
+          if (res.exito) {
+            mostrarHoras(res.data);
+          } else {
+            alert("Error: " + res.error);
+            document.getElementById('loader-horas').style.display = 'none';
+          }
+        })
+        .catch(err => {
+          alert("Error de comunicación: " + err.message);
+          document.getElementById('loader-horas').style.display = 'none';
+        });
     }
 
     function mostrarHoras(horas) {
@@ -1067,59 +1064,39 @@
       });
     }
 
-    // REALIZAR RESERVA CON REINTENTO AUTOMÁTICO
-    async function realizarReserva() {
-      const btn = document.getElementById('btn-reservar');
-      btn.disabled = true;
-      btn.innerText = 'Procesando...';
+    function realizarReserva() {
+      document.getElementById('btn-reservar').disabled = true;
+      document.getElementById('btn-reservar').innerText = 'Procesando...';
 
-      const MAX_INTENTOS = 3;
+      const payload = {
+        accion: 'procesarReserva',
+        parametros: reservaActual
+      };
 
-      for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
-        try {
-          const res = await fetch(API_URL, {
-            method: 'POST',
-            redirect: 'follow',
-            body: JSON.stringify({
-              accion: 'RESERVAR',
-              datos: reservaActual
-            })
-          });
-
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-          const data = await res.json();
-
-          if (data.exito) {
+      llamarAppsScript(payload)
+        .then(res => {
+          if(res.exito && res.data.exito) {
+            const dataReserva = res.data;
             document.getElementById('resumen-reserva').innerHTML = `
-              <strong>Reserva #:</strong> ${data.numeroReserva} <br>
-              <strong>Fecha (PT):</strong> ${data.fecha} <br>
+              <strong>Reserva #:</strong> ${dataReserva.numeroReserva} <br>
+              <strong>Fecha (PT):</strong> ${dataReserva.fecha} <br>
               <strong>Cliente:</strong> ${reservaActual.nombre} <br>
               <strong>Servicio:</strong> ${reservaActual.duracion} min ($${reservaActual.precio}) <br>
               <strong>Método de Pago:</strong> Cash o Zelle
             `;
             volver('step-exito');
-            return;
           } else {
-            alert("Error al reservar: " + data.error);
-            btn.disabled = false;
-            btn.innerText = 'Confirmar Reserva';
-            return;
+            const msgError = res.error || (res.data ? res.data.error : 'Error desconocido');
+            alert("Error: " + msgError);
+            document.getElementById('btn-reservar').disabled = false;
+            document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
           }
-
-        } catch (err) {
-          console.warn(`Intento ${intento} envío reserva falló: ${err.message}`);
-          
-          if (intento === MAX_INTENTOS) {
-            alert("Error de conexión al guardar reserva. Intenta hacer clic en 'Confirmar Reserva' de nuevo.");
-            btn.disabled = false;
-            btn.innerText = 'Confirmar Reserva';
-            return;
-          }
-
-          await new Promise(r => setTimeout(r, 250));
-        }
-      }
+        })
+        .catch(err => {
+          alert("Error de red: " + err.message);
+          document.getElementById('btn-reservar').disabled = false;
+          document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
+        });
     }
 
     function reiniciarApp() {
@@ -1138,49 +1115,34 @@
       document.getElementById('msg-cancelar').innerHTML = `<div class="message ${tipo}">${msg}</div>`;
     }
 
-    // CANCELAR RESERVA CON REINTENTO AUTOMÁTICO
-    async function confirmarCancelar() {
+    function confirmarCancelar() {
       const num = document.getElementById('num-reserva-input').value.trim();
       if(!num) { mostrarMensajeCancelar("Ingrese un número de reserva.", "error"); return; }
-      
       if(confirm("¿Seguro que desea cancelar?")) {
-        const loader = document.getElementById('loader-cancelar');
-        loader.style.display = 'block';
+        document.getElementById('loader-cancelar').style.display = 'block';
 
-        const MAX_INTENTOS = 3;
-
-        for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
-          try {
-            const res = await fetch(API_URL, {
-              method: 'POST',
-              redirect: 'follow',
-              body: JSON.stringify({
-                accion: 'CANCELAR',
-                numeroReserva: num
-              })
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const data = await res.json();
-            loader.style.display = 'none';
-
-            mostrarMensajeCancelar(data.exito ? data.mensaje : data.error, data.exito ? 'success' : 'error');
-            if (data.exito) document.getElementById('num-reserva-input').value = '';
-            return;
-
-          } catch (err) {
-            console.warn(`Intento ${intento} cancelar falló: ${err.message}`);
-
-            if (intento === MAX_INTENTOS) {
-              loader.style.display = 'none';
-              mostrarMensajeCancelar("Error de conexión. Reintente presionar el botón.", "error");
-              return;
-            }
-
-            await new Promise(r => setTimeout(r, 250));
+        const payload = {
+          accion: 'gestionarReserva',
+          parametros: {
+            accionReserva: 'CANCELAR',
+            numeroReserva: num
           }
-        }
+        };
+
+        llamarAppsScript(payload)
+          .then(res => {
+            document.getElementById('loader-cancelar').style.display = 'none';
+            if (res.exito && res.data) {
+              mostrarMensajeCancelar(res.data.exito ? res.data.mensaje : res.data.error, res.data.exito ? 'success' : 'error');
+              if (res.data.exito) document.getElementById('num-reserva-input').value = '';
+            } else {
+              mostrarMensajeCancelar("Error: " + (res.error || "No se pudo procesar"), "error");
+            }
+          })
+          .catch(err => {
+            document.getElementById('loader-cancelar').style.display = 'none';
+            mostrarMensajeCancelar("Error de conexión: " + err.message, "error");
+          });
       }
     }
   </script>
