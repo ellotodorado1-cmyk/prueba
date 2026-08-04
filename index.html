@@ -926,38 +926,49 @@
 
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-    // Función JSONP ultraligera para comunicarse con Google Apps Script
-    function llamarAppsScript(payloadObj) {
-      return new Promise((resolve, reject) => {
-        const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
-        const script = document.createElement('script');
-        
-        const timeoutId = setTimeout(() => {
-          cleanup();
-          reject(new Error("Tiempo de espera agotado. Reintenta la operación."));
-        }, 12000);
+    // Función JSONP optimizada con mayor timeout y reintento automático
+function llamarAppsScript(payloadObj, intento = 1) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
+    const script = document.createElement('script');
+    
+    // Aumentamos el timeout a 25 segundos para dar margen al cold start de Apps Script
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      // Si falla en el primer intento, reintenta automáticamente una vez más
+      if (intento === 1) {
+        console.warn("Tiempo agotado en intento 1. Reintentando...");
+        llamarAppsScript(payloadObj, 2).then(resolve).catch(reject);
+      } else {
+        reject(new Error("Tiempo de espera agotado. Por favor, reintenta la operación."));
+      }
+    }, 25000);
 
-        function cleanup() {
-          if (window[callbackName]) delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          clearTimeout(timeoutId);
-        }
-
-        window[callbackName] = function(response) {
-          cleanup();
-          resolve(response);
-        };
-
-        script.onerror = function() {
-          cleanup();
-          reject(new Error("Error de conexión al servidor."));
-        };
-
-        const jsonString = encodeURIComponent(JSON.stringify(payloadObj));
-        script.src = `${API_URL}?payload=${jsonString}&callback=${callbackName}`;
-        document.body.appendChild(script);
-      });
+    function cleanup() {
+      if (window[callbackName]) delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      clearTimeout(timeoutId);
     }
+
+    window[callbackName] = function(response) {
+      cleanup();
+      resolve(response);
+    };
+
+    script.onerror = function() {
+      cleanup();
+      if (intento === 1) {
+        llamarAppsScript(payloadObj, 2).then(resolve).catch(reject);
+      } else {
+        reject(new Error("Error de conexión al servidor."));
+      }
+    };
+
+    const jsonString = encodeURIComponent(JSON.stringify(payloadObj));
+    script.src = `${API_URL}?payload=${jsonString}&callback=${callbackName}`;
+    document.body.appendChild(script);
+  });
+}
 
     function switchTab(tabId) {
       document.querySelectorAll('.app-reserva-seccion .tab').forEach(t => t.classList.remove('active'));
