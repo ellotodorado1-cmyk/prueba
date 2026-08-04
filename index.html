@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Abrir en Navegador</title>
+  <title>Abrir en Safari</title>
   <style>
     :root {
       --primary: #c07a5f;
-      --primary-hover: #a3644b;
       --bg: #fcf9f6;
       --text: #4a4a4a;
     }
@@ -36,14 +35,14 @@
       width: 100%;
     }
     h1 {
-      font-size: 1.4rem;
-      margin-bottom: 10px;
+      font-size: 1.3rem;
+      margin-bottom: 12px;
       color: #333;
     }
     p {
       font-size: 0.95rem;
-      color: #666;
-      margin-bottom: 25px;
+      color: #555;
+      margin-bottom: 20px;
       line-height: 1.4;
     }
     .btn {
@@ -58,67 +57,85 @@
       border-radius: 8px;
       font-weight: 600;
       font-size: 1rem;
-      border: none;
-      cursor: pointer;
       box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
     }
-    .btn:active {
-      background-color: var(--primary-hover);
+    .ios-instructions {
+      display: none;
+      background-color: #fff3cd;
+      border: 1px solid #ffeeba;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 15px;
+      text-align: left;
     }
-    .instructions {
-      margin-top: 20px;
-      font-size: 0.85rem;
-      color: #888;
-      border-top: 1px solid #eee;
-      padding-top: 15px;
+    .ios-instructions ol {
+      margin: 8px 0 0 0;
+      padding-left: 20px;
+      font-size: 0.9rem;
+      color: #856404;
+      line-height: 1.5;
+    }
+    .arrow-pointer {
+      position: fixed;
+      top: 10px;
+      right: 15px;
+      font-size: 24px;
+      animation: bounce 1s infinite alternate;
+      display: none;
+    }
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-8px); }
     }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h1>Continuar a la Aplicación</h1>
-    <p>Haz clic en el botón para abrir el sistema de reservas en Safari.</p>
-    
-    <!-- Enlace nativo tipo <a> (requerido por WebKit iOS) -->
-    <a id="open-link" class="btn" href="#">Abrir en Safari</a>
+  <div id="arrow" class="arrow-pointer">↗️</div>
 
-    <div class="instructions">
-      <p style="margin:0;">Si no abre automáticamente, toca los <strong>tres puntos (•••)</strong> arriba a la derecha y selecciona <strong>"Abrir en Safari"</strong>.</p>
+  <div class="card">
+    <h1>Abrir Sistema de Reservas</h1>
+    <p>Para continuar, abre este enlace en Safari o tu navegador principal.</p>
+
+    <!-- Botón para Android / Desktop -->
+    <a id="main-btn" class="btn" href="#">Continuar</a>
+
+    <!-- Instrucción obligatoria para iOS dentro de Facebook/Instagram -->
+    <div id="ios-box" class="ios-instructions">
+      <strong style="color: #856404;">⚠️ Para abrir en Safari en iPhone:</strong>
+      <ol>
+        <li>Toca el icono de los <strong>tres puntos (•••)</strong> en la esquina superior derecha.</li>
+        <li>Selecciona <strong>"Abrir en el navegador"</strong> o <strong>"Abrir en Safari"</strong>.</li>
+      </ol>
     </div>
   </div>
 
   <script>
-    // REEMPLAZA ESTA URL CON TU LINK DE GOOGLE APPS SCRIPT
+    // REEMPLAZA CON TU ENLACE DE GOOGLE APPS SCRIPT
     const TARGET_URL = "https://script.google.com/macros/s/TU_SCRIPT_ID/exec";
 
-    const linkBtn = document.getElementById('open-link');
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+    const isFBorInsta = /FBAN|FBAV|Instagram/.test(userAgent);
     const isAndroid = /Android/.test(userAgent);
 
-    if (isAndroid) {
-      // Android: Intent directo a Chrome
-      const cleanUrl = TARGET_URL.replace(/^https?:\/\//, '');
-      linkBtn.href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end`;
-    } else if (isIOS) {
-      // iOS: Uso de data URL mime-type para forzar a WebKit a descargar/abrir fuera de la App
-      const rawContent = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${TARGET_URL}"></head><body></body></html>`;
-      const blob = new Blob([rawContent], { type: 'text/html' });
-      const blobUrl = URL.createObjectURL(blob);
-      
-      linkBtn.href = TARGET_URL;
-      linkBtn.target = "_blank";
-      linkBtn.rel = "noopener noreferrer";
+    const mainBtn = document.getElementById('main-btn');
+    const iosBox = document.getElementById('ios-box');
+    const arrow = document.getElementById('arrow');
 
-      linkBtn.addEventListener('click', function(e) {
-        // Ejecuta intento directo alterno en el evento de clic nativo
-        window.open(TARGET_URL, '_system');
-      });
+    if (isIOS && isFBorInsta) {
+      // En iOS dentro de Facebook/Instagram se muestra la guía visual
+      iosBox.style.display = "block";
+      arrow.style.display = "block";
+      mainBtn.href = TARGET_URL;
+      mainBtn.innerText = "Reintentar abrir";
+    } else if (isAndroid && isFBorInsta) {
+      // Android rompe el navegador con la intención de Chrome
+      const cleanUrl = TARGET_URL.replace(/^https?:\/\//, '');
+      mainBtn.href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end`;
     } else {
-      // Escritorio o navegadores normales
-      linkBtn.href = TARGET_URL;
+      // Safari o navegador externo normal
+      mainBtn.href = TARGET_URL;
     }
   </script>
 
