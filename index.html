@@ -928,12 +928,22 @@
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
     // Función auxiliar para realizar llamadas GET seguras con Payload
-    async function llamarAppsScript(payloadObj) {
-      const payloadString = encodeURIComponent(JSON.stringify(payloadObj));
-      const url = `${API_URL}?payload=${payloadString}`;
-      const response = await fetch(url, { method: 'GET' });
-      return await response.json();
-    }
+    // CÓDIGO NUEVO (PEGAR ESTO):
+async function llamarAppsScript(payloadObj) {
+  const jsonString = JSON.stringify(payloadObj);
+  const params = new URLSearchParams();
+  params.append('payload', jsonString);
+
+  const url = `${API_URL}?${params.toString()}`;
+
+  const response = await fetch(url, { 
+    method: 'GET',
+    mode: 'cors',
+    redirect: 'follow'
+  });
+  
+  return await response.json();
+}
 
     function switchTab(tabId) {
       document.querySelectorAll('.app-reserva-seccion .tab').forEach(t => t.classList.remove('active'));
