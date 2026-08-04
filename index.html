@@ -2,116 +2,42 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Abrir en Safari</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirigiendo a Safari...</title>
   <style>
-    :root {
-      --primary: #c07a5f;
-      --bg: #fcf9f6;
-      --text: #4a4a4a;
-    }
-    * {
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
     body {
-      margin: 0;
-      padding: 20px;
-      min-height: 100vh;
-      background-color: var(--bg);
-      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #fcf9f6;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
+      height: 100vh;
+      margin: 0;
+      color: #4a4a4a;
       text-align: center;
     }
-    .card {
-      background: #ffffff;
-      padding: 30px 20px;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-      max-width: 400px;
-      width: 100%;
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #c07a5f;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
     }
-    h1 {
-      font-size: 1.3rem;
-      margin-bottom: 12px;
-      color: #333;
-    }
-    p {
-      font-size: 0.95rem;
-      color: #555;
-      margin-bottom: 20px;
-      line-height: 1.4;
-    }
-    .btn {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      background-color: var(--primary);
-      color: #ffffff;
-      text-decoration: none;
-      padding: 14px 20px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-    .ios-instructions {
-      display: none;
-      background-color: #fff3cd;
-      border: 1px solid #ffeeba;
-      border-radius: 10px;
-      padding: 15px;
-      margin-top: 15px;
-      text-align: left;
-    }
-    .ios-instructions ol {
-      margin: 8px 0 0 0;
-      padding-left: 20px;
-      font-size: 0.9rem;
-      color: #856404;
-      line-height: 1.5;
-    }
-    .arrow-pointer {
-      position: fixed;
-      top: 10px;
-      right: 15px;
-      font-size: 24px;
-      animation: bounce 1s infinite alternate;
-      display: none;
-    }
-    @keyframes bounce {
-      from { transform: translateY(0); }
-      to { transform: translateY(-8px); }
-    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <div id="arrow" class="arrow-pointer">↗️</div>
-
-  <div class="card">
-    <h1>Abrir Sistema de Reservas</h1>
-    <p>Para continuar, abre este enlace en Safari o tu navegador principal.</p>
-
-    <!-- Botón para Android / Desktop -->
-    <a id="main-btn" class="btn" href="#">Continuar</a>
-
-    <!-- Instrucción obligatoria para iOS dentro de Facebook/Instagram -->
-    <div id="ios-box" class="ios-instructions">
-      <strong style="color: #856404;">⚠️ Para abrir en Safari en iPhone:</strong>
-      <ol>
-        <li>Toca el icono de los <strong>tres puntos (•••)</strong> en la esquina superior derecha.</li>
-        <li>Selecciona <strong>"Abrir en el navegador"</strong> o <strong>"Abrir en Safari"</strong>.</li>
-      </ol>
-    </div>
+  <div>
+    <div class="loader"></div>
+    <h2>Abriendo en Safari...</h2>
+    <p>Espere un momento, finalizando conexión externa.</p>
   </div>
 
   <script>
-    // REEMPLAZA CON TU ENLACE DE GOOGLE APPS SCRIPT
+    // 1. REEMPLAZA CON TU LINK DE GOOGLE APPS SCRIPT (/exec)
     const TARGET_URL = "https://script.google.com/macros/s/TU_SCRIPT_ID/exec";
 
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -119,23 +45,21 @@
     const isFBorInsta = /FBAN|FBAV|Instagram/.test(userAgent);
     const isAndroid = /Android/.test(userAgent);
 
-    const mainBtn = document.getElementById('main-btn');
-    const iosBox = document.getElementById('ios-box');
-    const arrow = document.getElementById('arrow');
-
-    if (isIOS && isFBorInsta) {
-      // En iOS dentro de Facebook/Instagram se muestra la guía visual
-      iosBox.style.display = "block";
-      arrow.style.display = "block";
-      mainBtn.href = TARGET_URL;
-      mainBtn.innerText = "Reintentar abrir";
-    } else if (isAndroid && isFBorInsta) {
-      // Android rompe el navegador con la intención de Chrome
+    if (isAndroid && isFBorInsta) {
+      // En Android salta a Chrome usando el esquema Intent
       const cleanUrl = TARGET_URL.replace(/^https?:\/\//, '');
-      mainBtn.href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end`;
+      window.location.href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end`;
+    } else if (isIOS && isFBorInsta) {
+      // En iOS dentro de Meta: Forzar descarga de archivo .ics para obligar a iOS a abrir Safari
+      window.location.href = "redirect.ics";
+      
+      // Tras lanzar la orden de archivo, redirige inmediatamente la pestaña principal al Apps Script
+      setTimeout(function() {
+        window.location.href = TARGET_URL;
+      }, 500);
     } else {
-      // Safari o navegador externo normal
-      mainBtn.href = TARGET_URL;
+      // Safari directo, PC o navegador normal
+      window.location.href = TARGET_URL;
     }
   </script>
 
