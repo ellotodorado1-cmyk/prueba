@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Loto Dorado - Reserva</title>
   <style>
     /* VARIABLES Y ESTILOS GLOBALES DE LA PÁGINA */
@@ -16,27 +16,29 @@
       --text-muted: #a6a6a6;
       --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-      /* Variables integradas de la aplicación de reserva */
-      --app-primary: #c07a5f; 
-      --app-primary-hover: #a3644b;
-      --app-card-bg: #ffffff; 
-      --app-text: #4a4a4a;
-      --app-border: #e0d5ce; 
-      --app-error: #d9534f; 
-      --app-success: #5cb85c;
+      /* Variables de la app de reservas */
+      --primary: #c07a5f;
+      --primary-hover: #a3644b;
+      --bg: #fcf9f6;
+      --card-bg: #ffffff;
+      --text: #4a4a4a;
+      --border: #e0d5ce;
+      --error: #d9534f;
+      --success: #5cb85c;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      font-family: var(--font-family);
     }
 
     body {
-      font-family: var(--font-family);
       background-color: var(--bg-light);
       color: var(--primary-color);
       line-height: 1.6;
+      -webkit-text-size-adjust: 100%;
     }
 
     /* HEADER / NAVEGACIÓN */
@@ -200,280 +202,65 @@
       margin-top: 15px;
     }
 
-    /* SECCIÓN DE LA APLICACIÓN DE RESERVA INTEGRADA */
-    .app-reserva-seccion {
-      margin-top: 50px;
+    /* ESTILOS DEL APLICATIVO DE RESERVA INTEGRADO */
+    .app-wrapper {
+      margin-top: 40px;
+      padding-top: 20px;
       border-top: 1px solid rgba(209, 194, 180, 0.3);
-      padding-top: 40px;
-      display: flex;
-      justify-content: center;
-      width: 100%;
+    }
+    
+    .container { 
+      background: var(--card-bg); 
+      max-width: 600px; 
+      width: 100%; 
+      border-radius: 12px; 
+      box-shadow: 0 8px 24px rgba(192, 122, 95, 0.08); 
+      padding: 25px; 
+      margin: auto; 
     }
 
-    .app-reserva-seccion .container {
-      background: var(--app-card-bg);
-      max-width: 600px;
-      width: 100%;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(192, 122, 95, 0.08);
-      padding: 30px;
-    }
+    .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+    .tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; font-weight: 600; color: #a0a0a0; transition: 0.3s; }
+    .tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); margin-bottom: -2px; }
 
-    .app-reserva-seccion .tabs {
-      display: flex;
-      border-bottom: 2px solid var(--app-border);
-      margin-bottom: 20px;
-    }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 0.9em; color: var(--text); }
+    input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 1em; outline: none; background-color: #fff; -webkit-appearance: none; }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(192,122,95,0.2); }
+    .note { font-size: 0.8em; color: #888; margin-top: 4px; display: block; }
 
-    .app-reserva-seccion .tab {
-      flex: 1;
-      text-align: center;
-      padding: 12px;
-      cursor: pointer;
-      font-weight: 600;
-      color: #a0a0a0;
-      transition: 0.3s;
-    }
+    button { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 1em; font-weight: 600; cursor: pointer; width: 100%; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
+    button:hover:not(:disabled) { background: var(--primary-hover); }
+    button:disabled { background: #dcdcdc; cursor: not-allowed; }
+    button.secondary { background: #f0f0f0; color: var(--text); margin-top: 10px; }
+    button.danger { background: white; color: var(--error); border: 1px solid var(--error); margin-top: 10px; }
 
-    .app-reserva-seccion .tab.active {
-      color: var(--app-primary);
-      border-bottom: 3px solid var(--app-primary);
-      margin-bottom: -2px;
-    }
+    .step { display: none; }
+    .step.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-    .app-reserva-seccion .form-group {
-      margin-bottom: 16px;
-    }
+    .calendar-container { border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: #fff; margin-bottom: 15px; }
+    .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; }
+    .cal-nav { background: none; border: none; font-size: 1.2em; color: var(--primary); cursor: pointer; padding: 0 10px; width: auto; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+    .cal-day-name { font-size: 0.8em; font-weight: 600; color: #888; padding-bottom: 5px; }
+    .cal-day { padding: 10px 0; border-radius: 6px; cursor: pointer; font-size: 0.9em; transition: 0.2s; }
+    .cal-day:hover:not(.disabled) { background: #f0e6e1; }
+    .cal-day.selected { background: var(--primary); color: white; font-weight: bold; }
+    .cal-day.disabled { color: #d0d0d0; cursor: not-allowed; background: transparent; }
 
-    .app-reserva-seccion label {
-      display: block;
-      font-weight: 500;
-      margin-bottom: 6px;
-      font-size: 0.9em;
-    }
+    .time-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px; }
+    .time-slot { padding: 10px; border: 1px solid var(--primary); border-radius: 6px; text-align: center; cursor: pointer; color: var(--primary); font-weight: bold;}
+    .time-slot:hover, .time-slot.selected { background: var(--primary); color: white; }
 
-    .app-reserva-seccion input,
-    .app-reserva-seccion select,
-    .app-reserva-seccion textarea {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid var(--app-border);
-      border-radius: 6px;
-      font-size: 1em;
-      outline: none;
-    }
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    .app-reserva-seccion input:focus,
-    .app-reserva-seccion select:focus,
-    .app-reserva-seccion textarea:focus {
-      border-color: var(--app-primary);
-      box-shadow: 0 0 0 2px rgba(192,122,95,0.2);
-    }
-
-    .app-reserva-seccion .note {
-      font-size: 0.8em;
-      color: #888;
-      margin-top: 4px;
-      display: block;
-    }
-
-    .app-reserva-seccion button {
-      background: var(--app-primary);
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 6px;
-      font-size: 1em;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      transition: 0.2s;
-    }
-
-    .app-reserva-seccion button:hover:not(:disabled) {
-      background: var(--app-primary-hover);
-    }
-
-    .app-reserva-seccion button:disabled {
-      background: #dcdcdc;
-      cursor: not-allowed;
-    }
-
-    .app-reserva-seccion button.secondary {
-      background: #f0f0f0;
-      color: var(--app-text);
-      margin-top: 10px;
-    }
-
-    .app-reserva-seccion button.danger {
-      background: white;
-      color: var(--app-error);
-      border: 1px solid var(--app-error);
-      margin-top: 10px;
-    }
-
-    .app-reserva-seccion button.danger:hover {
-      background: var(--app-error);
-      color: white;
-    }
-
-    .app-reserva-seccion .step {
-      display: none;
-    }
-
-    .app-reserva-seccion .step.active {
-      display: block;
-      animation: fadeIn 0.4s;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .app-reserva-seccion .calendar-container {
-      border: 1px solid var(--app-border);
-      border-radius: 8px;
-      padding: 15px;
-      background: #fff;
-      margin-bottom: 15px;
-    }
-
-    .app-reserva-seccion .cal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-      font-weight: bold;
-    }
-
-    .app-reserva-seccion .cal-nav {
-      background: none;
-      border: none;
-      font-size: 1.2em;
-      color: var(--app-primary);
-      cursor: pointer;
-      padding: 0 10px;
-      width: auto;
-    }
-
-    .app-reserva-seccion .cal-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
-      text-align: center;
-    }
-
-    .app-reserva-seccion .cal-day-name {
-      font-size: 0.8em;
-      font-weight: 600;
-      color: #888;
-      padding-bottom: 5px;
-    }
-
-    .app-reserva-seccion .cal-day {
-      padding: 10px 0;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9em;
-      transition: 0.2s;
-    }
-
-    .app-reserva-seccion .cal-day:hover:not(.disabled) {
-      background: #f0e6e1;
-    }
-
-    .app-reserva-seccion .cal-day.selected {
-      background: var(--app-primary);
-      color: white;
-      font-weight: bold;
-    }
-
-    .app-reserva-seccion .cal-day.disabled {
-      color: #d0d0d0;
-      cursor: not-allowed;
-      background: transparent;
-    }
-
-    .app-reserva-seccion .time-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 10px;
-      margin-top: 15px;
-    }
-
-    .app-reserva-seccion .time-slot {
-      padding: 10px;
-      border: 1px solid var(--app-primary);
-      border-radius: 6px;
-      text-align: center;
-      cursor: pointer;
-      color: var(--app-primary);
-      font-weight: bold;
-    }
-
-    .app-reserva-seccion .time-slot:hover, 
-    .app-reserva-seccion .time-slot.selected {
-      background: var(--app-primary);
-      color: white;
-    }
-
-    .app-reserva-seccion .loader {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid var(--app-primary);
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-      display: none;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .app-reserva-seccion .message {
-      padding: 15px;
-      border-radius: 6px;
-      margin-bottom: 15px;
-      display: none;
-      text-align: center;
-    }
-
-    .app-reserva-seccion .message.success {
-      background: #dff0d8;
-      color: #3c763d;
-      display: block;
-    }
-
-    .app-reserva-seccion .message.error {
-      background: #f2dede;
-      color: #a94442;
-      border: 1px solid #ebccd1;
-      display: block;
-    }
-
-    .app-reserva-seccion .summary-card {
-      background: #f9f9f9;
-      padding: 15px;
-      border-radius: 6px;
-      margin-bottom: 20px;
-      text-align: left;
-      border: 1px dashed var(--app-border);
-    }
-
-    .app-reserva-seccion .timezone-badge {
-      display: inline-block;
-      background: #eef;
-      color: #336;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.85em;
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
+    .message { padding: 15px; border-radius: 6px; margin-bottom: 15px; text-align: center; }
+    .message.success { background: #dff0d8; color: #3c763d; display: block; }
+    .message.error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; display: block; }
+    .summary-card { background: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: left; border: 1px dashed var(--border); }
+    .timezone-badge { display: inline-block; background: #eef; color: #336; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; margin-bottom: 10px; font-weight: bold;}
 
     /* SECCIÓN: NOTAS DE TU RESERVA */
     .notas-section {
@@ -698,8 +485,8 @@
         <img src="metodo-pago.png" alt="Cash y Zelle" class="pago-img">
       </div>
 
-      <!-- APLICACIÓN DE RESERVAS INTEGRADA -->
-      <div class="app-reserva-seccion">
+      <!-- NUEVA APLICACIÓN DE RESERVAS INTEGRADA -->
+      <div class="app-wrapper">
         <div class="container">
           <div class="tabs">
             <div class="tab active" onclick="switchTab('agendar')">Agendar Reserva</div>
@@ -714,28 +501,17 @@
                 <div class="form-group"><label>Ciudad en Silicon Valley *</label>
                   <select id="ciudad" required>
                     <option value="">Seleccione una ciudad...</option>
-                    <option value="Atherton">Atherton</option>
-                    <option value="Belmont">Belmont</option>
-                    <option value="Campbell">Campbell</option>
-                    <option value="Cupertino">Cupertino</option>
-                    <option value="East Palo Alto">East Palo Alto</option>
-                    <option value="Fremont">Fremont</option>
-                    <option value="Los Altos">Los Altos</option>
-                    <option value="Los Altos Hills">Los Altos Hills</option>
-                    <option value="Los Gatos">Los Gatos</option>
-                    <option value="Menlo Park">Menlo Park</option>
-                    <option value="Milpitas">Milpitas</option>
-                    <option value="Monte Sereno">Monte Sereno</option>
-                    <option value="Mountain View">Mountain View</option>
-                    <option value="Newark">Newark</option>
-                    <option value="Palo Alto">Palo Alto</option>
-                    <option value="Portola Valley">Portola Valley</option>
-                    <option value="Redwood City">Redwood City</option>
-                    <option value="San Carlos">San Carlos</option>
-                    <option value="San José">San José</option>
-                    <option value="Santa Clara">Santa Clara</option>
-                    <option value="Saratoga">Saratoga</option>
-                    <option value="Sunnyvale">Sunnyvale</option>
+                    <option value="Atherton">Atherton</option><option value="Belmont">Belmont</option>
+                    <option value="Campbell">Campbell</option><option value="Cupertino">Cupertino</option>
+                    <option value="East Palo Alto">East Palo Alto</option><option value="Fremont">Fremont</option>
+                    <option value="Los Altos">Los Altos</option><option value="Los Altos Hills">Los Altos Hills</option>
+                    <option value="Los Gatos">Los Gatos</option><option value="Menlo Park">Menlo Park</option>
+                    <option value="Milpitas">Milpitas</option><option value="Monte Sereno">Monte Sereno</option>
+                    <option value="Mountain View">Mountain View</option><option value="Newark">Newark</option>
+                    <option value="Palo Alto">Palo Alto</option><option value="Portola Valley">Portola Valley</option>
+                    <option value="Redwood City">Redwood City</option><option value="San Carlos">San Carlos</option>
+                    <option value="San José">San José</option><option value="Santa Clara">Santa Clara</option>
+                    <option value="Saratoga">Saratoga</option><option value="Sunnyvale">Sunnyvale</option>
                     <option value="Woodside">Woodside</option>
                   </select>
                 </div>
@@ -777,7 +553,7 @@
 
               <div id="loader-horas" class="loader"></div>
               <div id="contenedor-horas" class="time-grid"></div>
-              <p id="msg-no-horas" style="display:none; color: var(--app-error); font-size: 0.9em;">No hay disponibilidad.</p>
+              <p id="msg-no-horas" style="display:none; color: var(--error); font-size: 0.9em; text-align: center;">No hay disponibilidad para esta fecha.</p>
               
               <div style="margin-top: 20px;">
                 <button id="btn-reservar" onclick="realizarReserva()" disabled>Confirmar Reserva</button>
@@ -786,7 +562,7 @@
             </div>
 
             <div id="step-exito" class="step" style="text-align: center;">
-              <h2 style="color: var(--app-success);">¡Reserva Exitosa!</h2>
+              <h2 style="color: var(--success);">¡Reserva Exitosa!</h2>
               <div id="resumen-reserva" class="summary-card"></div>
               <button onclick="reiniciarApp()">Realizar otra reserva</button>
             </div>
@@ -903,10 +679,9 @@
     });
   </script>
 
-  <!-- SCRIPT DE LÓGICA DE APLICACIÓN DE RESERVAS CON APPS SCRIPT -->
+  <!-- LÓGICA DE RESERVAS -->
   <script>
-    // URL DE TU DESPLIEGUE DE APPS SCRIPT
-    const API_URL = 'https://script.google.com/macros/s/AKfycbyaQ1ThjmnJZ1uVzqsXkYzH6eZWJ5mCc6HI8J0s1TsQc2hvq2iCGRf4xo7bwLDZYeRKEw/exec';
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxL0962lgwzoLUTYMK1OEwmxb_mchFw56R6jlhZa4eqxp32higkzGbC3QOyj0A77y-W/exec";
 
     let reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
 
@@ -924,17 +699,16 @@
     
     let currentMonth = hoySF.getMonth();
     let currentYear = hoySF.getFullYear();
-
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
     function switchTab(tabId) {
-      document.querySelectorAll('.app-reserva-seccion .tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.app-reserva-seccion .container > .step').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.container > .step').forEach(c => c.classList.remove('active'));
       if (tabId === 'agendar') {
-        document.querySelector('.app-reserva-seccion .tab:nth-child(1)').classList.add('active');
+        document.querySelector('.tab:nth-child(1)').classList.add('active');
         document.getElementById('tab-agendar').classList.add('active');
       } else {
-        document.querySelector('.app-reserva-seccion .tab:nth-child(2)').classList.add('active');
+        document.querySelector('.tab:nth-child(2)').classList.add('active');
         document.getElementById('tab-cancelar').classList.add('active');
       }
     }
@@ -1012,21 +786,16 @@
       document.getElementById('msg-no-horas').style.display = 'none';
       document.getElementById('btn-reservar').disabled = true;
 
-      const url = `${API_URL}?anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
-
-      fetch(url)
+      const params = `action=obtenerHoras&anio=${anio}&mes=${mes}&dia=${dia}&duracion=${reservaActual.duracion}`;
+      
+      fetch(`${SCRIPT_URL}?${params}`)
         .then(res => res.json())
-        .then(res => {
-          if (res.exito) {
-            mostrarHoras(res.datos);
-          } else {
-            alert("Error: " + res.error);
-            document.getElementById('loader-horas').style.display = 'none';
-          }
+        .then(horas => {
+          mostrarHoras(horas);
         })
         .catch(err => {
-          alert("Error de comunicación: " + err.message);
           document.getElementById('loader-horas').style.display = 'none';
+          alert("Error de conexión al obtener disponibilidad.");
         });
     }
 
@@ -1052,13 +821,10 @@
     function realizarReserva() {
       document.getElementById('btn-reservar').disabled = true;
       document.getElementById('btn-reservar').innerText = 'Procesando...';
-
-      fetch(API_URL, {
+      
+      fetch(SCRIPT_URL, {
         method: 'POST',
-        body: JSON.stringify({
-          accion: 'RESERVAR',
-          datos: reservaActual
-        })
+        body: JSON.stringify({ action: 'procesarReserva', datos: reservaActual })
       })
       .then(res => res.json())
       .then(res => {
@@ -1078,7 +844,7 @@
         }
       })
       .catch(err => {
-        alert("Error de red: " + err.message);
+        alert("Error en el servidor al enviar reserva.");
         document.getElementById('btn-reservar').disabled = false;
         document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
       });
@@ -1088,11 +854,8 @@
       document.getElementById('form-datos').reset();
       reservaActual = { horaInicioMs: null, duracion: null, precio: null, anio:null, mes:null, dia:null };
       document.getElementById('contenedor-horas').innerHTML = '';
-      
-      const btn = document.getElementById('btn-reservar');
-      btn.innerText = 'Confirmar Reserva';
-      btn.disabled = true;
-      
+      document.getElementById('btn-reservar').disabled = true;
+      document.getElementById('btn-reservar').innerText = 'Confirmar Reserva';
       volver('step-datos');
     }
 
@@ -1105,13 +868,10 @@
       if(!num) { mostrarMensajeCancelar("Ingrese un número de reserva.", "error"); return; }
       if(confirm("¿Seguro que desea cancelar?")) {
         document.getElementById('loader-cancelar').style.display = 'block';
-
-        fetch(API_URL, {
+        
+        fetch(SCRIPT_URL, {
           method: 'POST',
-          body: JSON.stringify({
-            accion: 'CANCELAR',
-            numeroReserva: num
-          })
+          body: JSON.stringify({ action: 'gestionarReserva', accion: 'CANCELAR', numeroReserva: num })
         })
         .then(res => res.json())
         .then(res => {
@@ -1121,7 +881,7 @@
         })
         .catch(err => {
           document.getElementById('loader-cancelar').style.display = 'none';
-          mostrarMensajeCancelar("Error de conexión: " + err.message, "error");
+          mostrarMensajeCancelar("Error al procesar la solicitud.", 'error');
         });
       }
     }
