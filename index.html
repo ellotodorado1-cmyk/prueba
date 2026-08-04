@@ -159,16 +159,84 @@
     }
 
     async function consultarHorarios(anio, mes, dia) {
-      const gridHoras = document.getElementById('horas-grid');
-      const statusMsg = document.getElementById('status-msg');
-      
-      gridHoras.innerHTML = '';
-      statusMsg.innerText = 'Cargando...';
+  const gridHoras = document.getElementById('horas-grid');
+  const statusMsg = document.getElementById('status-msg');
+  
+  gridHoras.innerHTML = '';
+  statusMsg.innerText = 'Cargando...';
 
-      if (abortController) {
-        abortController.abort();
-        log(`Petición anterior cancelada por nuevo clic.`, 'warn');
+  // Cancelar petición anterior si existía
+  if (abortController) {
+    abortController.abort();
+    log(`Petición anterior cancelada por nuevo clic.`, 'warn');
+  }
+  
+  // Crear nuevo AbortController
+  abortController = new AbortController();
+
+  // Forzar formato de 2 dígitos para mes y día (Compatibilidad 100% Safari/iOS)
+  const mesPadded = String(mes).padStart(2, '0');
+  const diaPadded = String(dia).padStart(2, '0');
+
+  // URL limpia y formateada
+  const params = new URLSearchParams({
+    anio: String(anio),
+    mes: String(mes),
+    dia: String(dia),
+    duracion: '60'
+  });
+
+  const url = `${API_URL}?${params.toString()}`;
+  const tiempoInicio = performance.now();
+
+  log(`SALIDA -> Enviando petición para fecha: ${dia}/${mes + 1}/${anio}`);
+
+  // Configurar Timeout de 8 segundos para no colgar el navegador
+  const timeoutId = setTimeout(() => abortController.abort(), 8000);
+
+  try {
+    const res = await fetch(url, { 
+      method: 'GET',
+      signal: abortController.signal 
+    });
+    
+    clearTimeout(timeoutId); // Limpiar el temporizador si respondió a tiempo
+
+    const data = await res.json();
+    const tiempoTotal = Math.round(performance.now() - tiempoInicio);
+
+    log(`LLEGADA <- Respuesta recibida en ${tiempoTotal}ms. (Ejecución Google: ${data.meta ? data.meta.tiempoInternoMs : 'N/A'}ms)`);
+
+    if (data.exito) {
+      if (data.horas.length === 0) {
+        statusMsg.innerText = 'No hay horarios disponibles.';
+        log(`RESULTADO: 0 horarios encontrados para este día.`);
+      } else {
+        statusMsg.innerText = '';
+        log(`RESULTADO: ${data.horas.length} horarios renderizados en pantalla.`);
+        data.horas.forEach(h => {
+          const btn = document.createElement('div');
+          btn.className = 'hora-slot';
+          btn.innerText = h.etiqueta;
+          gridHoras.appendChild(btn);
+        });
       }
+    } else {
+      statusMsg.innerText = 'Error en el servidor.';
+      log(`ERROR SERVIDOR: ${data.error}`, 'error');
+    }
+
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      log(`PETICIÓN CANCELADA O TIMEOUT (superó 8s).`, 'warn');
+    } else {
+      const tiempoFallido = Math.round(performance.now() - tiempoInicio);
+      statusMsg.innerText = 'Error de conexión.';
+      log(`FALLO DE RED tras ${tiempoFallido}ms: ${err.message}`, 'error');
+    }
+  }
+}
       abortController = new AbortController();
 
       const url = `${API_URL}?anio=${anio}&mes=${mes}&dia=${dia}&duracion=60`;
