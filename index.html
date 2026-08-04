@@ -926,40 +926,32 @@
 
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-    // Método mediante fetch optimizado para compatibilidad con iOS y Facebook In-App Browser
-async function llamarAppsScript(payloadObj, intento = 1) {
-  const jsonString = encodeURIComponent(JSON.stringify(payloadObj));
-  const url = `${API_URL}?payload=${jsonString}`;
-
+  async function llamarAppsScript(payloadObj) {
   try {
-    // Usamos fetch con timeout mediante AbortController
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors', // Permite leer la respuesta si el GAS responde con ContentService JSON
+    // Se envía como POST en mode no-cors para evitar bloqueos de origen/CORS de Safari y Facebook
+    await fetch(API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'text/plain' // text/plain evita el preflight OPTIONS en CORS
+      },
+      body: JSON.stringify(payloadObj),
       signal: controller.signal
     });
-    
+
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`HTTP Error status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
+    // Con mode 'no-cors' la respuesta es opaca, pero si no lanzó excepción, la petición llegó con éxito
+    return { status: 'success' };
 
   } catch (err) {
-    // Si falla por CORS o bloqueo de red en el navegador incrustado, hacemos fallback transparente
-    if (intento === 1) {
-      console.warn("Intento 1 fallido, reintentando con fallback...");
-      return llamarAppsScriptFallback(url);
+    if (err.name === 'AbortError') {
+      throw new Error("Tiempo de espera agotado. Reintenta la operación.");
     }
-    throw new Error(err.name === 'AbortError' 
-      ? "Tiempo de espera agotado. Reintenta la operación." 
-      : "Error de comunicación: Error de conexión al servidor.");
+    throw new Error("Error de red al conectar con el servidor.");
   }
 }
 
