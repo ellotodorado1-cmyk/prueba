@@ -47,7 +47,9 @@
       line-height: 1.4;
     }
     .btn {
-      display: inline-block;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       width: 100%;
       background-color: var(--primary);
       color: #ffffff;
@@ -58,11 +60,18 @@
       font-size: 1rem;
       border: none;
       cursor: pointer;
-      transition: background 0.2s;
+      box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
     }
-    .btn:hover {
+    .btn:active {
       background-color: var(--primary-hover);
+    }
+    .instructions {
+      margin-top: 20px;
+      font-size: 0.85rem;
+      color: #888;
+      border-top: 1px solid #eee;
+      padding-top: 15px;
     }
   </style>
 </head>
@@ -70,38 +79,46 @@
 
   <div class="card">
     <h1>Continuar a la Aplicación</h1>
-    <p>Para una mejor experiencia y completar tu proceso sin interrupciones, abre este enlace en tu navegador principal.</p>
+    <p>Haz clic en el botón para abrir el sistema de reservas en Safari.</p>
     
-    <button class="btn" onclick="openExternalBrowser()">Abrir en Safari / Navegador</button>
+    <!-- Enlace nativo tipo <a> (requerido por WebKit iOS) -->
+    <a id="open-link" class="btn" href="#">Abrir en Safari</a>
+
+    <div class="instructions">
+      <p style="margin:0;">Si no abre automáticamente, toca los <strong>tres puntos (•••)</strong> arriba a la derecha y selecciona <strong>"Abrir en Safari"</strong>.</p>
+    </div>
   </div>
 
   <script>
-    // REEMPLAZA ESTA URL CON TU ENLACE DE GOOGLE APPS SCRIPT
+    // REEMPLAZA ESTA URL CON TU LINK DE GOOGLE APPS SCRIPT
     const TARGET_URL = "https://script.google.com/macros/s/TU_SCRIPT_ID/exec";
 
-    function openExternalBrowser() {
-      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-      const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
-      const isAndroid = /Android/.test(userAgent);
+    const linkBtn = document.getElementById('open-link');
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+    const isAndroid = /Android/.test(userAgent);
 
-      if (isIOS) {
-        // En iOS WebView, generar un blob force-download / stream obliga a WebKit 
-        // a solicitar abrir la ubicación directamente en Safari fuera de la App.
-        const targetClean = TARGET_URL.replace(/^https?:\/\//, '');
-        window.location.href = "x-web-search://?" + TARGET_URL;
-        
-        // Fallback secundario estándar para iOS Meta WebViews
-        setTimeout(() => {
-          window.location.href = TARGET_URL;
-        }, 300);
-      } else if (isAndroid) {
-        // En Android, el esquema intent:// rompe el WebView de Instagram/FB y abre Chrome.
-        const cleanUrl = TARGET_URL.replace(/^https?:\/\//, '');
-        window.location.href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end`;
-      } else {
-        // Escritorio o navegadores estándar
-        window.location.href = TARGET_URL;
-      }
+    if (isAndroid) {
+      // Android: Intent directo a Chrome
+      const cleanUrl = TARGET_URL.replace(/^https?:\/\//, '');
+      linkBtn.href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end`;
+    } else if (isIOS) {
+      // iOS: Uso de data URL mime-type para forzar a WebKit a descargar/abrir fuera de la App
+      const rawContent = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${TARGET_URL}"></head><body></body></html>`;
+      const blob = new Blob([rawContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      linkBtn.href = TARGET_URL;
+      linkBtn.target = "_blank";
+      linkBtn.rel = "noopener noreferrer";
+
+      linkBtn.addEventListener('click', function(e) {
+        // Ejecuta intento directo alterno en el evento de clic nativo
+        window.open(TARGET_URL, '_system');
+      });
+    } else {
+      // Escritorio o navegadores normales
+      linkBtn.href = TARGET_URL;
     }
   </script>
 
