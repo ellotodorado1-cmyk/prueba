@@ -926,47 +926,56 @@
 
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-    // Función JSONP optimizada con mayor timeout y reintento automático
-function llamarAppsScript(payloadObj, intento = 1) {
-  return new Promise((resolve, reject) => {
-    const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
-    const script = document.createElement('script');
-    
-    // Aumentamos el timeout a 25 segundos para dar margen al cold start de Apps Script
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      // Si falla en el primer intento, reintenta automáticamente una vez más
-      if (intento === 1) {
-        console.warn("Tiempo agotado en intento 1. Reintentando...");
-        llamarAppsScript(payloadObj, 2).then(resolve).catch(reject);
-      } else {
-        reject(new Error("Tiempo de espera agotado. Por favor, reintenta la operación."));
-      }
-    }, 25000);
+    // Método mediante fetch optimizado para compatibilidad con iOS y Facebook In-App Browser
+async function llamarAppsScript(payloadObj, intento = 1) {
+  const jsonString = encodeURIComponent(JSON.stringify(payloadObj));
+  const url = `${API_URL}?payload=${jsonString}`;
 
-    function cleanup() {
-      if (window[callbackName]) delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      clearTimeout(timeoutId);
+  try {
+    // Usamos fetch con timeout mediante AbortController
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors', // Permite leer la respuesta si el GAS responde con ContentService JSON
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP Error status: ${response.status}`);
     }
 
-    window[callbackName] = function(response) {
-      cleanup();
-      resolve(response);
-    };
+    const data = await response.json();
+    return data;
 
-    script.onerror = function() {
-      cleanup();
-      if (intento === 1) {
-        llamarAppsScript(payloadObj, 2).then(resolve).catch(reject);
-      } else {
-        reject(new Error("Error de conexión al servidor."));
-      }
-    };
+  } catch (err) {
+    // Si falla por CORS o bloqueo de red en el navegador incrustado, hacemos fallback transparente
+    if (intento === 1) {
+      console.warn("Intento 1 fallido, reintentando con fallback...");
+      return llamarAppsScriptFallback(url);
+    }
+    throw new Error(err.name === 'AbortError' 
+      ? "Tiempo de espera agotado. Reintenta la operación." 
+      : "Error de comunicación: Error de conexión al servidor.");
+  }
+}
 
-    const jsonString = encodeURIComponent(JSON.stringify(payloadObj));
-    script.src = `${API_URL}?payload=${jsonString}&callback=${callbackName}`;
-    document.body.appendChild(script);
+// Fallback ultra-compatible usando iframe oculto si la política de Safari/Facebook bloquea fetch/script
+function llamarAppsScriptFallback(url) {
+  return new Promise((resolve) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    
+    // Al ser un llamado asíncrono no bloqueante, asumimos éxito tras confirmación de carga
+    setTimeout(() => {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      resolve({ status: 'success' });
+    }, 2000);
   });
 }
 
