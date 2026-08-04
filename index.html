@@ -928,18 +928,47 @@
     const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
     // CÓDIGO NUEVO (PEGAR ESTO):
-async function llamarAppsScript(payloadObj) {
-  const jsonString = JSON.stringify(payloadObj);
-  const params = new URLSearchParams();
-  params.append('payload', jsonString);
+// Alternativa ultraligera vía inyección de <script> (JSONP)
+// Cero errores de CORS, cero errores de patrón en Safari/iOS
+function llamarAppsScript(payloadObj) {
+  return new Promise((resolve, reject) => {
+    // Generar un nombre único para cada petición
+    const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
+    
+    // Crear elemento <script>
+    const script = document.createElement('script');
+    
+    // Configurar tiempo límite (Timeout de 12 segundos)
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error("Tiempo de espera agotado. Reintenta seleccionar el día."));
+    }, 12000);
 
-  const url = `${API_URL}?${params.toString()}`;
+    // Función de limpieza de script e inyección
+    function cleanup() {
+      if (window[callbackName]) delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      clearTimeout(timeoutId);
+    }
 
-  const response = await fetch(url, { 
-    method: 'GET',
-    mode: 'cors',
-    redirect: 'follow'
+    // Callback global que recibirá los datos directamente
+    window[callbackName] = function(response) {
+      cleanup();
+      resolve(response);
+    };
+
+    // Manejo de error de red
+    script.onerror = function() {
+      cleanup();
+      reject(new Error("Error de conexión al consultar disponibilidad."));
+    };
+
+    // Formatear parámetros e inyectar al DOM
+    const jsonString = encodeURIComponent(JSON.stringify(payloadObj));
+    script.src = `${API_URL}?payload=${jsonString}&callback=${callbackName}`;
+    document.body.appendChild(script);
   });
+}
   
   return await response.json();
 }
